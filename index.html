@@ -569,7 +569,8 @@
           <select id="folderPhotoSelect"><option value="">папка с фото не выбрана</option></select>
           <button id="loadFolderPhotoBtn">Выбрать фото из папки</button>
           <input id="imageInput" type="file" accept="image/*" />
-          <input id="imageName" placeholder="Название снимка" />
+          <input id="imageName" placeholder="Название снимка / подпись" />
+          <input id="imageFileName" placeholder="Название файла фото в data/tiles, например photo_001.jpg" />
           <input id="imageUrl" type="hidden" />
           <textarea id="imageComment" placeholder="Комментарий к снимку / файлу"></textarea>
           <div class="metaPanel">
@@ -606,7 +607,7 @@
             </div>
           </div>
         </div>
-        <div class="hint">Папку с фото достаточно выбрать один раз в текущей сессии. Сам файл изображения используется только для привязки и предпросмотра, но не записывается в JSON. В JSON сохраняются точки, привязка, области, комментарии, метаданные, имя файла и путь к снимку. Для готовой базы JSON лежат в папке data/regions, а фото — в папке data/tiles.</div>
+        <div class="hint">Папку с фото достаточно выбрать один раз в текущей сессии. Сам файл изображения используется только для привязки и предпросмотра, но не записывается в JSON. В JSON сохраняются точки, привязка, области, комментарии, метаданные и название файла снимка для поиска в data/tiles. Для готовой базы JSON лежат в папке data/regions, а фото — в папке data/tiles.</div>
         <div class="rangeLine">
           <input id="overlayOpacityRange" type="range" min="0" max="100" value="66" />
           <span id="overlayOpacityValue" class="small">66%</span>
@@ -932,6 +933,7 @@ const els = {
   folderPhotoSelect: document.getElementById('folderPhotoSelect'),
   loadFolderPhotoBtn: document.getElementById('loadFolderPhotoBtn'),
   imageName: document.getElementById('imageName'),
+  imageFileName: document.getElementById('imageFileName'),
   imageUrl: document.getElementById('imageUrl'),
   imageComment: document.getElementById('imageComment'),
   imageQuality: document.getElementById('imageQuality'),
@@ -1096,9 +1098,9 @@ function imageMetadataText(img) {
   const comment = (img.comment || '').trim();
   return [
     'Файл: ' + (img.name || 'без названия'),
-    'Имя исходного изображения: ' + (img.fileName || img.name || 'не задано'),
+    'Имя исходного изображения: ' + (img.sourceFileName || img.originalFileName || img.fileName || 'не задано'),
     'Изображение в JSON: не сохраняется',
-    'Файл снимка: ' + (img.imagePath || img.imageUrl || img.fileName || (img.dataUrl ? 'загружено локально в текущей сессии' : 'не задан')),
+    'Файл для поиска в data/tiles: ' + (img.imageFileName || img.tileFileName || img.photoFileName || img.fileName || 'не задан'),
     'Качество: ' + QUALITY_LABELS[img.quality],
     'Масштаб: ' + SCALE_LABELS[img.scaleTag],
     'Дата: ' + (img.dateEnabled ? formatMonth(img.dateMonth) : 'без даты'),
@@ -1322,15 +1324,22 @@ function remoteTileAssetUrl(path) {
   return REMOTE_TILES_DIR + '/' + normalized;
 }
 
+function looksLikeImageFileName(value) {
+  return /\.(jpg|jpeg|png|webp|gif|tif|tiff|bmp)$/i.test(String(value || '').trim());
+}
+
 function resolveRemoteImageUrl(img, tile, tileUrl) {
+  if (!img) return '';
   const raw = String(
+    img.imageFileName ||
+    img.tileFileName ||
+    img.photoFileName ||
+    (looksLikeImageFileName(img.name) ? img.name : '') ||
+    img.fileName ||
     img.imageUrl ||
     img.url ||
     img.imagePath ||
     img.path ||
-    img.imageFileName ||
-    img.fileName ||
-    img.name ||
     ''
   ).trim();
   if (!raw) return '';
@@ -1488,14 +1497,18 @@ function loadImageMeta(src) {
 function fileKeyCandidates(img) {
   if (!img) return [];
   const values = [
-    img.fileName,
     img.imageFileName,
+    img.tileFileName,
+    img.photoFileName,
+    looksLikeImageFileName(img.name) ? img.name : '',
+    img.fileName,
     img.sourceFileName,
-    img.name,
+    img.originalFileName,
     img.imagePath,
     img.path,
     img.imageUrl,
-    img.url
+    img.url,
+    img.name
   ].filter(Boolean).map(v => String(v).replace(/\\/g, '/'));
   const out = [];
   values.forEach(v => {
@@ -1526,7 +1539,9 @@ function stripEmbeddedImageData(img) {
   delete out.imageData;
   delete out.data;
   delete out.objectUrl;
-  if (!out.fileName && out.name) out.fileName = out.name;
+  if (!out.imageFileName) out.imageFileName = img.imageFileName || img.tileFileName || img.photoFileName || img.fileName || '';
+  if (!out.sourceFileName) out.sourceFileName = img.sourceFileName || img.originalFileName || img.fileName || '';
+  if (!out.fileName) out.fileName = out.imageFileName || out.sourceFileName || out.name || '';
   if (!out.imageUrl) out.imageUrl = img.imageUrl || img.url || '';
   return out;
 }
@@ -1536,8 +1551,10 @@ function normalizeProjectImage(img, idx = 0) {
     ...img,
     opacity: clampOpacity(typeof img.opacity === 'number' ? img.opacity : 0.66),
     comment: typeof img.comment === 'string' ? img.comment : '',
-    name: img.name || img.fileName || ('Снимок ' + (idx + 1)),
+    name: img.name || img.fileName || img.imageFileName || ('Снимок ' + (idx + 1)),
+    imageFileName: img.imageFileName || img.tileFileName || img.photoFileName || img.fileName || '',
     fileName: img.fileName || img.imageFileName || img.sourceFileName || img.name || '',
+    sourceFileName: img.sourceFileName || img.originalFileName || img.fileName || '',
     imagePath: img.imagePath || img.path || '',
     imageUrl: img.imageUrl || img.url || '',
     dataUrl: img.dataUrl || ''
@@ -1592,6 +1609,7 @@ function recomputeGeorefIfPossible(img) {
 function syncImageControls(img) {
   if (!img) {
     els.imageName.value = '';
+    if (els.imageFileName) els.imageFileName.value = '';
     els.imageUrl.value = '';
     els.imageComment.value = '';
     els.imageQuality.value = 'satisfactory';
@@ -1609,6 +1627,7 @@ function syncImageControls(img) {
   if (typeof img.comment !== 'string') img.comment = '';
   normalizeImageMetadata(img);
   els.imageName.value = img.name || '';
+  if (els.imageFileName) els.imageFileName.value = img.imageFileName || img.tileFileName || img.photoFileName || img.fileName || '';
   els.imageUrl.value = img.imageUrl || '';
   els.imageComment.value = img.comment || '';
   els.imageQuality.value = img.quality;
@@ -1630,6 +1649,11 @@ function saveImageMetaFromControls(silent = false) {
     return;
   }
   img.name = els.imageName.value.trim() || img.name || 'Без названия';
+  const fileNameForTiles = els.imageFileName ? els.imageFileName.value.trim() : '';
+  if (fileNameForTiles) {
+    img.imageFileName = fileNameForTiles;
+    img.fileName = fileNameForTiles;
+  }
   img.imageUrl = els.imageUrl.value.trim();
   img.comment = els.imageComment.value;
   Object.assign(img, readImageMetadataControls());
@@ -1638,7 +1662,7 @@ function saveImageMetaFromControls(silent = false) {
   els.overlayOpacityValue.textContent = Math.round(img.opacity * 100) + '%';
   if (img.georef) updateImagePosition(img, Boolean(state.selectedPolygonId));
   renderLists();
-  if (!silent) setStatus('Свойства, комментарий и прозрачность выбранного снимка сохранены.');
+  if (!silent) setStatus('Свойства, имя файла для data/tiles, комментарий и прозрачность выбранного снимка сохранены.');
 }
 
 function selectedCommentText() {
@@ -1860,7 +1884,9 @@ async function loadImageFileAsDraft(file, template = null) {
   const draft = {
     id: uid('img'),
     name: els.imageName.value.trim() || file.name,
-    fileName: file.name,
+    imageFileName: (els.imageFileName && els.imageFileName.value.trim()) || file.name,
+    fileName: (els.imageFileName && els.imageFileName.value.trim()) || file.name,
+    sourceFileName: file.name,
     imagePath: String(file.webkitRelativePath || file.name).replace(/\\/g, '/'),
     imageUrl: els.imageUrl.value.trim(),
     dataUrl,
@@ -1913,7 +1939,10 @@ async function replaceSelectedImageWithFile(file) {
   }
   const oldGeoref = img.georef ? { ...img.georef } : null;
   img.dataUrl = dataUrl;
-  img.fileName = file.name;
+  const fileNameForTiles = els.imageFileName ? els.imageFileName.value.trim() : '';
+  img.imageFileName = fileNameForTiles || img.imageFileName || file.name;
+  img.fileName = img.imageFileName;
+  img.sourceFileName = file.name;
   img.imagePath = String(file.webkitRelativePath || file.name).replace(/\\/g, '/');
   img.imageUrl = els.imageUrl.value.trim() || img.imageUrl || '';
   img.width = meta.width;
@@ -2097,6 +2126,7 @@ document.getElementById('saveImageMetaBtn').onclick = () => saveImageMetaFromCon
 els.imageComment.addEventListener('change', () => saveImageMetaFromControls(true));
 els.imageName.addEventListener('change', () => saveImageMetaFromControls(true));
 if (els.imageUrl) els.imageUrl.addEventListener('change', () => saveImageMetaFromControls(true));
+if (els.imageFileName) els.imageFileName.addEventListener('change', () => saveImageMetaFromControls(true));
 els.imageQuality.addEventListener('change', () => saveImageMetaFromControls(true));
 els.imageClouds.addEventListener('change', () => saveImageMetaFromControls(true));
 els.imageSnow.addEventListener('change', () => saveImageMetaFromControls(true));
@@ -2693,7 +2723,7 @@ if (els.selectedMiniViewport) {
 
 function exportProject() {
   const project = {
-    version: 21,
+    version: 22,
     createdAt: new Date().toISOString(),
     storage: { embeddedOverlayImages: false },
     dataSourceMode: state.dataSourceMode,

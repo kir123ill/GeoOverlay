@@ -1,0 +1,2940 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Геопривязка аэрофотосъёмки</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    :root {
+      --bg: #f2f4f7;
+      --panel: #ffffff;
+      --line: #d6dbe3;
+      --text: #1f2933;
+      --muted: #687383;
+      --accent: #1c5fb8;
+      --accent-soft: #e7f0ff;
+      --danger: #b42318;
+      --danger-soft: #fff0ee;
+      --free: #087443;
+      --free-soft: #e8fff2;
+      --shadow: 0 2px 10px rgba(20, 30, 45, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      height: 100%;
+      margin: 0;
+      font-family: Arial, sans-serif;
+      color: var(--text);
+      background: var(--bg);
+      overflow: hidden;
+    }
+
+    button, input, select, textarea {
+      font-family: Arial, sans-serif;
+      font-size: 13px;
+    }
+
+    button {
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 8px;
+      padding: 7px 9px;
+      cursor: pointer;
+    }
+
+    button:hover { background: #f5f7fb; }
+    button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+    button.primary:hover { background: #164d94; }
+    button.danger { background: var(--danger-soft); color: var(--danger); border-color: #ffd1cc; }
+    button.free { background: var(--free-soft); color: var(--free); border-color: #b9ebd0; }
+
+    input, select, textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      padding: 7px 8px;
+      color: var(--text);
+    }
+
+    input[type="file"] { padding: 6px; }
+    input[type="range"] { padding: 0; }
+    textarea { resize: vertical; min-height: 72px; line-height: 1.35; }
+
+    #app {
+      height: 100%;
+      display: grid;
+      grid-template-rows: 64px 1fr;
+    }
+
+    #topbar {
+      display: grid;
+      grid-template-columns: auto auto auto 1fr;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 12px;
+      background: #fff;
+      border-bottom: 1px solid var(--line);
+      box-shadow: var(--shadow);
+      z-index: 20;
+    }
+
+    .brand {
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .modeTabs {
+      display: inline-flex;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 2px;
+      background: #f7f8fa;
+    }
+
+    .modeTabs button {
+      border: 0;
+      border-radius: 8px;
+      background: transparent;
+      padding: 7px 12px;
+    }
+
+    .modeTabs button.active {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .topActions {
+      display: flex;
+      gap: 7px;
+      align-items: center;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+    }
+
+    .topActions input[type="file"] {
+      max-width: 210px;
+    }
+
+    .remotePathInput {
+      max-width: 250px;
+      min-width: 190px;
+    }
+
+    #main {
+      min-height: 0;
+      display: grid;
+      grid-template-columns: 310px minmax(0, 1fr) 330px;
+      gap: 10px;
+      padding: 10px;
+    }
+
+    #leftPanel, #rightPanel {
+      min-height: 0;
+      overflow: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px;
+      box-shadow: var(--shadow);
+    }
+
+    .card h2 {
+      margin: 0 0 8px;
+      font-size: 14px;
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+      margin: 5px 0;
+    }
+
+    .small { color: var(--muted); font-size: 12px; }
+
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+    .fieldGap { display: grid; gap: 6px; }
+
+    .checkLine {
+      display: flex;
+      align-items: flex-start;
+      gap: 7px;
+      font-size: 13px;
+      line-height: 1.25;
+      margin: 6px 0;
+      color: var(--text);
+    }
+
+    .checkLine input {
+      width: auto;
+      margin-top: 1px;
+      flex: 0 0 auto;
+    }
+
+    .rangeLine {
+      display: grid;
+      grid-template-columns: 1fr 48px;
+      align-items: center;
+      gap: 8px;
+    }
+
+    details summary {
+      cursor: pointer;
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 7px;
+    }
+
+    #workArea {
+      min-width: 0;
+      min-height: 0;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 10px;
+    }
+
+    .pane {
+      min-width: 0;
+      min-height: 0;
+      position: relative;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+
+    .paneTitle {
+      height: 34px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 10px;
+      background: #f7f8fa;
+      border-bottom: 1px solid var(--line);
+      font-weight: 700;
+      font-size: 13px;
+    }
+
+    #photoViewport {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 34px;
+      bottom: 0;
+      overflow: hidden;
+      background: #20242a;
+      cursor: grab;
+      user-select: none;
+    }
+
+    #photoViewport.pointMode { cursor: crosshair; }
+
+    #photoLayer {
+      position: absolute;
+      left: 0;
+      top: 0;
+      transform-origin: 0 0;
+      will-change: transform;
+    }
+
+    #photoImg {
+      display: none;
+      width: auto;
+      height: auto;
+      max-width: none;
+      max-height: none;
+      pointer-events: none;
+      user-select: none;
+    }
+
+    .photoPoint {
+      position: absolute;
+      width: 5px;
+      height: 5px;
+      margin-left: -2.5px;
+      margin-top: -2.5px;
+      border-radius: 50%;
+      background: #ff1e00;
+      border: 1px solid #fff;
+      box-shadow: 0 0 0 1px #000;
+      z-index: 20;
+      pointer-events: none;
+    }
+
+    .photoPoint::after {
+      content: attr(data-label);
+      position: absolute;
+      left: 6px;
+      top: -7px;
+      background: rgba(255,255,255,0.92);
+      border: 1px solid #333;
+      padding: 1px 3px;
+      font-size: 9px;
+      line-height: 1;
+      color: #000;
+      white-space: nowrap;
+    }
+
+    #map {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 34px;
+      bottom: 0;
+    }
+
+
+
+    .miniToolbar {
+      display: grid;
+      grid-template-columns: 36px 36px 1fr 1fr;
+      gap: 6px;
+      margin-bottom: 7px;
+    }
+
+    .miniPhotoBox {
+      position: relative;
+      height: 360px;
+      overflow: hidden;
+      background: #20242a;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      cursor: grab;
+      user-select: none;
+    }
+
+    body.view-mode .miniPhotoBox {
+      height: calc(100vh - 385px);
+      min-height: 440px;
+      max-height: 680px;
+    }
+
+    #selectedMiniLayer {
+      position: absolute;
+      left: 0;
+      top: 0;
+      transform-origin: 0 0;
+      will-change: transform;
+    }
+
+    #selectedMiniPhoto {
+      display: none;
+      position: absolute;
+      left: 0;
+      top: 0;
+      max-width: none;
+      max-height: none;
+      user-select: none;
+      pointer-events: none;
+    }
+
+    #selectedMiniSvg {
+      position: absolute;
+      left: 0;
+      top: 0;
+      overflow: visible;
+      pointer-events: none;
+    }
+
+    #selectedMiniText {
+      position: absolute;
+      left: 8px;
+      right: 8px;
+      top: 8px;
+      z-index: 4;
+      background: rgba(255,255,255,0.92);
+      border: 1px solid rgba(0,0,0,0.18);
+      border-radius: 8px;
+      padding: 6px 8px;
+      font-size: 12px;
+      line-height: 1.3;
+      color: #111;
+      pointer-events: none;
+    }
+
+
+
+    .helpButton {
+      font-weight: 700;
+      min-width: 36px;
+      padding-left: 10px;
+      padding-right: 10px;
+    }
+
+    .modalBackdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 5000;
+      background: rgba(15, 23, 42, 0.42);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+    }
+
+    .modalBackdrop.open {
+      display: flex;
+    }
+
+    .modalCard {
+      width: min(760px, 100%);
+      max-height: min(760px, 92vh);
+      overflow: auto;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      box-shadow: 0 18px 60px rgba(0,0,0,0.28);
+      padding: 16px;
+    }
+
+    .modalHeader {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .modalHeader h2 {
+      margin: 0;
+      font-size: 18px;
+    }
+
+    .modalCard h3 {
+      margin: 14px 0 6px;
+      font-size: 14px;
+    }
+
+    .modalCard p,
+    .modalCard li {
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .modalCard ol,
+    .modalCard ul {
+      margin-top: 6px;
+      padding-left: 20px;
+    }
+
+    .miniLegend {
+      margin-top: 6px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .legendItem {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .legendSwatch {
+      width: 18px;
+      height: 8px;
+      border-radius: 999px;
+      border: 2px solid currentColor;
+      background: rgba(255,255,255,0.6);
+    }
+
+    .legendSaved { color: #dc2626; }
+    .legendQuery { color: #16a34a; }
+
+
+    .status {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 8px;
+      min-height: 42px;
+      white-space: pre-wrap;
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .commentBox {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 8px;
+      min-height: 48px;
+      white-space: pre-wrap;
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .item {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 8px;
+      margin: 6px 0;
+      cursor: pointer;
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .item:hover { background: #f7f9fc; }
+    .item.active { outline: 2px solid #111; }
+    .item.freeItem { border-left: 5px solid var(--free); }
+
+    .badge {
+      display: inline-block;
+      padding: 1px 6px;
+      border-radius: 999px;
+      font-size: 11px;
+      border: 1px solid var(--line);
+      background: #f7f8fa;
+      margin-left: 4px;
+    }
+
+    .badge.freeBadge {
+      color: var(--free);
+      background: var(--free-soft);
+      border-color: #b9ebd0;
+    }
+
+    .badge.metaBadge {
+      color: #31435a;
+      background: #edf2f7;
+      border-color: #d6dde8;
+    }
+
+    .badge.warnBadge {
+      color: #8a4b00;
+      background: #fff4df;
+      border-color: #ffd58a;
+    }
+
+    .metaPanel {
+      border: 1px solid var(--line);
+      background: #f8fafc;
+      border-radius: 10px;
+      padding: 8px;
+      display: grid;
+      gap: 7px;
+    }
+
+    .metaTitle {
+      font-weight: 700;
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .03em;
+    }
+
+    .fieldLabel {
+      display: grid;
+      gap: 4px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .filterGrid {
+      display: grid;
+      gap: 7px;
+      margin-top: 7px;
+    }
+
+    .infoLine {
+      margin: 2px 0;
+    }
+
+    .geo-image {
+      position: absolute;
+      transform-origin: 0 0;
+      pointer-events: none;
+      opacity: 0.66;
+      image-rendering: auto;
+    }
+
+    .leaflet-overlay-pane { overflow: visible; }
+    .leaflet-control-attribution { font-size: 10px; }
+
+    body.view-mode #main {
+      grid-template-columns: minmax(0, 1fr) 520px;
+    }
+
+    body.view-mode #leftPanel,
+    body.view-mode #photoPane,
+    body.view-mode .editorOnly,
+    body.view-mode #imagesCard,
+    body.view-mode #commentEditCard,
+    body.view-mode #dangerCard {
+      display: none !important;
+    }
+
+    body.view-mode #workArea {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    body.view-mode #rightPanel {
+      grid-column: auto;
+    }
+
+    body.view-mode #mapPane .paneTitle::after {
+      content: "режим просмотра";
+      color: var(--muted);
+      font-weight: 400;
+      font-size: 12px;
+    }
+
+    @media (max-width: 1180px) {
+      html, body { overflow: auto; }
+      #app { height: auto; min-height: 100%; }
+      #main { grid-template-columns: 1fr; }
+      #workArea { grid-template-columns: 1fr; grid-template-rows: 560px 560px; }
+      body.view-mode #main { grid-template-columns: 1fr; }
+      body.view-mode #workArea { grid-template-rows: 640px; }
+      #topbar { grid-template-columns: 1fr; grid-template-rows: none; }
+      .topActions { justify-content: flex-start; }
+      #app { grid-template-rows: auto 1fr; }
+    }
+  </style>
+</head>
+<body class="view-mode">
+<div id="app">
+  <header id="topbar">
+    <div class="brand">Геопривязка аэрофотосъёмки</div>
+    <div class="modeTabs">
+      <button id="editModeBtn">Редактор</button>
+      <button id="viewModeBtn" class="active">Просмотр</button>
+    </div>
+    <div class="modeTabs">
+      <button id="localDataBtn" class="active">Мой проект</button>
+      <button id="remoteDataBtn">Готовая привязка</button>
+    </div>
+    <div class="topActions">
+      <input id="remoteBasePathInput" class="remotePathInput" value="data" title="Папка с готовыми привязками: data или полный URL" />
+      <button id="reloadRemoteIndexBtn">Индекс GitHub</button>
+      <button id="trainingBtn" class="helpButton" title="Краткое обучение">?</button>
+      <button id="newProjectBtn">Новый проект</button>
+      <button id="saveProjectBtn" class="primary">Скачать JSON</button>
+      <input id="loadProjectInput" type="file" accept="application/json,.json" title="Открыть проект JSON" />
+    </div>
+  </header>
+
+  <main id="main">
+    <aside id="leftPanel">
+      <section class="card">
+        <h2>1. Снимок</h2>
+        <div class="fieldGap">
+          <input id="photoFolderInput" type="file" accept="image/*" multiple webkitdirectory directory />
+          <select id="folderPhotoSelect"><option value="">папка с фото не выбрана</option></select>
+          <button id="loadFolderPhotoBtn">Выбрать фото из папки</button>
+          <input id="imageInput" type="file" accept="image/*" />
+          <input id="imageName" placeholder="Название снимка" />
+          <input id="imageUrl" placeholder="Путь/URL файла снимка, если он лежит отдельно" />
+          <textarea id="imageComment" placeholder="Комментарий к снимку / файлу"></textarea>
+          <div class="metaPanel">
+            <div class="metaTitle">Свойства снимка</div>
+            <label class="fieldLabel">Качество снимка
+              <select id="imageQuality">
+                <option value="bad">плохое</option>
+                <option value="satisfactory" selected>удовлетворительное</option>
+                <option value="good">хорошее</option>
+                <option value="excellent">отличное</option>
+              </select>
+            </label>
+            <label class="fieldLabel">Масштаб снимка
+              <select id="imageScaleTag">
+                <option value="small">маленький</option>
+                <option value="medium" selected>средний</option>
+                <option value="large">большой</option>
+              </select>
+            </label>
+            <label class="checkLine">
+              <input id="imageDateEnabled" type="checkbox" />
+              Указать дату снимка
+            </label>
+            <input id="imageDateMonth" type="month" disabled />
+            <div class="row">
+              <label class="checkLine">
+                <input id="imageClouds" type="checkbox" />
+                Есть облака
+              </label>
+              <label class="checkLine">
+                <input id="imageSnow" type="checkbox" />
+                Есть снег
+              </label>
+            </div>
+          </div>
+        </div>
+        <div class="hint">Папку с фото достаточно выбрать один раз в текущей сессии. Сам файл изображения используется только для привязки и предпросмотра, но не записывается в JSON. В JSON сохраняются точки, привязка, области, комментарии, метаданные, имя файла и внешний путь/URL.</div>
+        <div class="rangeLine">
+          <input id="overlayOpacityRange" type="range" min="0" max="100" value="66" />
+          <span id="overlayOpacityValue" class="small">66%</span>
+        </div>
+        <div class="row">
+          <button id="saveImageMetaBtn">Сохранить</button>
+          <button id="fitPhotoBtn">Вписать фото</button>
+        </div>
+        <div class="row3">
+          <button id="photoZoomOutBtn">−</button>
+          <button id="photoZoomInBtn">+</button>
+          <button id="resetPhotoPanBtn">Центр</button>
+        </div>
+        <input id="photoZoomRange" type="range" min="10" max="800" value="100" />
+      </section>
+
+      <section class="card">
+        <h2>2. Привязка</h2>
+        <div class="row">
+          <button id="setImgPt1Btn">Фото 1</button>
+          <button id="setImgPt2Btn">Фото 2</button>
+        </div>
+        <div class="row">
+          <button id="setMapPt1Btn">Карта 1</button>
+          <button id="setMapPt2Btn">Карта 2</button>
+        </div>
+        <div class="row">
+          <button id="applyGeorefBtn" class="primary">Применить</button>
+          <button id="resetGeorefPointsBtn">Сбросить</button>
+        </div>
+        <div class="hint">Точки на фото ставятся в левом окне, точки на карте — в правом. Маркеры сделаны маленькими для более точной установки.</div>
+      </section>
+
+      <section class="card">
+        <h2>3. Область снимка</h2>
+        <select id="imageSelect"></select>
+        <input id="polygonName" placeholder="Название новой области" />
+        <label class="checkLine">
+          <input id="createFreeAreaCheck" type="checkbox" />
+          Пометить новую область как бесплатную
+        </label>
+        <div class="row">
+          <button id="drawPolygonBtn">Рисовать</button>
+          <button id="finishPolygonBtn" class="primary">Сохранить</button>
+        </div>
+        <button id="cancelDrawingBtn">Отменить рисование</button>
+        <div class="hint">К одному снимку сохраняется любое количество областей. Каждая область хранит собственный флаг бесплатности.</div>
+      </section>
+
+      <section class="card">
+        <h2>Карта</h2>
+        <div class="row">
+          <select id="baseLayerSelect">
+            <option value="street">Карта</option>
+            <option value="satellite">Спутник</option>
+          </select>
+          <button id="goToCoordBtn">Перейти</button>
+        </div>
+        <input id="coordInput" placeholder="54.352, 18.646" />
+        <div class="row">
+          <input id="coordLat" placeholder="Широта" />
+          <input id="coordLng" placeholder="Долгота" />
+        </div>
+        <div class="row">
+          <button id="useMapCenterBtn">Центр карты</button>
+          <button id="clearCoordMarkerBtn">Убрать метку</button>
+        </div>
+        <div id="cursorCoords" class="hint">Курсор: —</div>
+      </section>
+
+      <section class="card" id="dangerCard">
+        <details>
+          <summary>Опасные действия</summary>
+          <button id="replaceImageBtn" class="danger">Заменить файл выбранного снимка</button>
+          <div class="hint">Эта кнопка меняет изображение внутри уже существующего снимка. Обычная загрузка выше так не делает.</div>
+        </details>
+      </section>
+    </aside>
+
+    <section id="workArea">
+      <section class="pane" id="photoPane">
+        <div class="paneTitle">
+          <span>Фото</span>
+          <span id="photoInfo" class="small">нет снимка</span>
+        </div>
+        <div id="photoViewport">
+          <div id="photoLayer">
+            <img id="photoImg" alt="Загруженное аэрофото" />
+          </div>
+        </div>
+      </section>
+
+      <section class="pane" id="mapPane">
+        <div class="paneTitle">
+          <span>Карта</span>
+          <span class="small editorOnly">рабочая область</span>
+        </div>
+        <div id="map"></div>
+      </section>
+    </section>
+
+    <aside id="rightPanel">
+      <section class="card">
+        <h2>Проверка пересечений</h2>
+        <label class="checkLine">
+          <input id="filterFreeCheck" type="checkbox" />
+          Искать только бесплатные области
+        </label>
+        <details open>
+          <summary>Фильтры по снимку</summary>
+          <div class="filterGrid">
+            <div class="row">
+              <label class="fieldLabel">Качество
+                <select id="filterQuality">
+                  <option value="any">любое</option>
+                  <option value="bad">плохое</option>
+                  <option value="satisfactory">удовлетворительное</option>
+                  <option value="good">хорошее</option>
+                  <option value="excellent">отличное</option>
+                </select>
+              </label>
+              <label class="fieldLabel">Масштаб
+                <select id="filterScaleTag">
+                  <option value="any">любой</option>
+                  <option value="small">маленький</option>
+                  <option value="medium">средний</option>
+                  <option value="large">большой</option>
+                </select>
+              </label>
+            </div>
+            <div class="row">
+              <label class="fieldLabel">Дата от
+                <input id="filterDateFrom" type="month" />
+              </label>
+              <label class="fieldLabel">Дата до
+                <input id="filterDateTo" type="month" />
+              </label>
+            </div>
+            <label class="checkLine">
+              <input id="filterIncludeUndated" type="checkbox" checked />
+              Показывать снимки без даты
+            </label>
+            <div class="row">
+              <label class="fieldLabel">Облака
+                <select id="filterClouds">
+                  <option value="any">не важно</option>
+                  <option value="yes">есть</option>
+                  <option value="no">нет</option>
+                </select>
+              </label>
+              <label class="fieldLabel">Снег
+                <select id="filterSnow">
+                  <option value="any">не важно</option>
+                  <option value="yes">есть</option>
+                  <option value="no">нет</option>
+                </select>
+              </label>
+            </div>
+            <button id="resetFiltersBtn">Сбросить фильтры</button>
+          </div>
+        </details>
+        <div class="row">
+          <button id="drawQueryBtn">Проверочная область</button>
+          <button id="finishQueryBtn" class="primary">Проверить</button>
+        </div>
+        <div class="row">
+          <button id="clearQueryBtn">Очистить</button>
+          <button id="showAllBtn">Показать всё</button>
+        </div>
+        <label class="checkLine editorOnly">
+          <input id="showSavedPolygonsCheck" type="checkbox" checked />
+          Показывать сохранённые области постоянно
+        </label>
+        <div id="status" class="status">Готово.</div>
+      </section>
+
+      <section class="card">
+        <h2>Найденные области</h2>
+        <div id="results"></div>
+      </section>
+
+      <section class="card" id="commentEditCard">
+        <h2>Комментарий выбранного файла</h2>
+        <div id="selectedFileComment" class="commentBox">Файл не выбран.</div>
+      </section>
+
+      <section class="card">
+        <h2>Фрагмент на снимке</h2>
+        <div class="miniToolbar">
+          <button id="miniZoomOutBtn" title="Уменьшить">−</button>
+          <button id="miniZoomInBtn" title="Увеличить">+</button>
+          <button id="miniFitBtn">Вписать</button>
+          <button id="miniAreaFitBtn">К области</button>
+        </div>
+        <div class="miniPhotoBox" id="selectedMiniViewport">
+          <div id="selectedMiniLayer">
+            <img id="selectedMiniPhoto" alt="Фрагмент выбранного снимка" />
+            <svg id="selectedMiniSvg"></svg>
+          </div>
+          <div id="selectedMiniText">Выберите найденную область, чтобы увидеть её на снимке.</div>
+        </div>
+        <div class="miniLegend">
+          <span class="legendItem legendSaved"><span class="legendSwatch"></span>сохранённая область</span>
+          <span class="legendItem legendQuery"><span class="legendSwatch"></span>проверочная область</span>
+        </div>
+        <div class="hint">Колесо мыши приближает снимок, перетаскивание двигает изображение. Выделение строится по обратному пересчёту координат карты в координаты снимка.</div>
+      </section>
+
+      <section class="card">
+        <h2>Действия с выбранной областью</h2>
+        <button id="deleteSelectedBtn" class="danger editorOnly">Удалить выбранную область</button>
+        <div class="hint">При выборе области из списка отображаются её границы и привязанный снимок.</div>
+      </section>
+
+      <section class="card" id="imagesCard">
+        <h2>Снимки в проекте</h2>
+        <div id="imagesList"></div>
+      </section>
+    </aside>
+  </main>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+
+<div id="trainingModal" class="modalBackdrop" aria-hidden="true">
+  <div class="modalCard" role="dialog" aria-modal="true" aria-labelledby="trainingTitle">
+    <div class="modalHeader">
+      <h2 id="trainingTitle">Краткое обучение</h2>
+      <button id="closeTrainingBtn">Закрыть</button>
+    </div>
+    <h3>Режим «Редактор»</h3>
+    <ol>
+      <li>Выберите папку с фото или загрузите отдельный снимок.</li>
+      <li>Выберите снимок из списка, укажите название, комментарий и при необходимости внешний путь/URL.</li>
+      <li>Поставьте две точки на фото и две соответствующие точки на карте.</li>
+      <li>Нажмите «Применить», затем нарисуйте одну или несколько областей снимка и сохраните их.</li>
+      <li>Скачайте JSON. В него сохраняются привязки и метаданные, но не само overlay-фото.</li>
+    </ol>
+    <h3>Режим «Просмотр»</h3>
+    <ol>
+      <li>Переключитесь на «Готовая привязка».</li>
+      <li>Нарисуйте проверочную область и нажмите «Проверить».</li>
+      <li>Программа загрузит нужные JSON-квадраты из папки <b>data/tiles</b> и покажет найденные пересечения.</li>
+      <li>При выборе найденной области справа откроется снимок: красным показана сохранённая область, зелёным — проверочная область.</li>
+    </ol>
+    <h3>Структура для GitHub Pages</h3>
+    <p>В корне сайта должен лежать <b>index.html</b>, а готовые привязки — в <b>data/index.json</b> и <b>data/tiles/*.json</b>. Большие фото лучше хранить отдельно и указывать в JSON через <b>imageUrl</b>. Тогда сайт подгружает только выбранное фото, а не весь архив.</p>
+  </div>
+</div>
+
+<script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
+<script>
+'use strict';
+
+const map = L.map('map').setView([54.352, 18.646], 12);
+const baseLayers = {
+  street: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 21,
+    attribution: '&copy; OpenStreetMap contributors'
+  }),
+  satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    maxZoom: 21,
+    attribution: 'Tiles &copy; Esri — Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community'
+  })
+};
+baseLayers.street.addTo(map);
+L.control.layers({ 'Карта': baseLayers.street, 'Спутник': baseLayers.satellite }, null, { collapsed: true }).addTo(map);
+setTimeout(() => map.invalidateSize(), 150);
+
+const state = {
+  dataSourceMode: 'local',
+  localImages: [],
+  localPolygons: [],
+  remoteImages: [],
+  remotePolygons: [],
+  remoteLoadedTiles: {},
+  remoteAvailableTiles: null,
+  remoteBasePath: 'data',
+  queryPolygon: null,
+  selectedPolygonId: null,
+  selectedImageId: null,
+  mode: null,
+  interfaceMode: 'view',
+  currentImageDraft: null,
+  drawing: { type: null, points: [], markers: [], line: null },
+  results: [],
+  mapRefMarkers: [],
+  mapBaseLayer: 'street',
+  showSavedPolygons: true,
+  filterFreeOnly: false,
+  filters: {
+    quality: 'any',
+    scaleTag: 'any',
+    dateFrom: '',
+    dateTo: '',
+    includeUndated: true,
+    clouds: 'any',
+    snow: 'any'
+  }
+};
+
+Object.defineProperties(state, {
+  images: {
+    get() { return state.dataSourceMode === 'remote' ? state.remoteImages : state.localImages; },
+    set(value) {
+      if (state.dataSourceMode === 'remote') state.remoteImages = Array.isArray(value) ? value : [];
+      else state.localImages = Array.isArray(value) ? value : [];
+    }
+  },
+  polygons: {
+    get() { return state.dataSourceMode === 'remote' ? state.remotePolygons : state.localPolygons; },
+    set(value) {
+      if (state.dataSourceMode === 'remote') state.remotePolygons = Array.isArray(value) ? value : [];
+      else state.localPolygons = Array.isArray(value) ? value : [];
+    }
+  }
+});
+
+const photoView = {
+  scale: 1,
+  offsetX: 0,
+  offsetY: 0,
+  dragging: false,
+  dragStartX: 0,
+  dragStartY: 0,
+  dragOffsetX: 0,
+  dragOffsetY: 0,
+  moved: false
+};
+
+const miniView = {
+  scale: 1,
+  offsetX: 0,
+  offsetY: 0,
+  dragging: false,
+  dragStartX: 0,
+  dragStartY: 0,
+  dragOffsetX: 0,
+  dragOffsetY: 0,
+  imageWidth: 0,
+  imageHeight: 0,
+  polygonPts: [],
+  currentKey: '',
+  autoFitKey: ''
+};
+
+const els = {
+  status: document.getElementById('status'),
+  imageInput: document.getElementById('imageInput'),
+  photoFolderInput: document.getElementById('photoFolderInput'),
+  folderPhotoSelect: document.getElementById('folderPhotoSelect'),
+  loadFolderPhotoBtn: document.getElementById('loadFolderPhotoBtn'),
+  imageName: document.getElementById('imageName'),
+  imageUrl: document.getElementById('imageUrl'),
+  imageComment: document.getElementById('imageComment'),
+  imageQuality: document.getElementById('imageQuality'),
+  imageScaleTag: document.getElementById('imageScaleTag'),
+  imageDateEnabled: document.getElementById('imageDateEnabled'),
+  imageDateMonth: document.getElementById('imageDateMonth'),
+  imageClouds: document.getElementById('imageClouds'),
+  imageSnow: document.getElementById('imageSnow'),
+  imageSelect: document.getElementById('imageSelect'),
+  results: document.getElementById('results'),
+  imagesList: document.getElementById('imagesList'),
+  selectedFileComment: document.getElementById('selectedFileComment'),
+  selectedMiniViewport: document.getElementById('selectedMiniViewport'),
+  selectedMiniLayer: document.getElementById('selectedMiniLayer'),
+  selectedMiniPhoto: document.getElementById('selectedMiniPhoto'),
+  selectedMiniSvg: document.getElementById('selectedMiniSvg'),
+  selectedMiniText: document.getElementById('selectedMiniText'),
+  miniZoomOutBtn: document.getElementById('miniZoomOutBtn'),
+  miniZoomInBtn: document.getElementById('miniZoomInBtn'),
+  miniFitBtn: document.getElementById('miniFitBtn'),
+  miniAreaFitBtn: document.getElementById('miniAreaFitBtn'),
+  photoViewport: document.getElementById('photoViewport'),
+  photoLayer: document.getElementById('photoLayer'),
+  photoImg: document.getElementById('photoImg'),
+  photoInfo: document.getElementById('photoInfo'),
+  photoZoomRange: document.getElementById('photoZoomRange'),
+  overlayOpacityRange: document.getElementById('overlayOpacityRange'),
+  overlayOpacityValue: document.getElementById('overlayOpacityValue'),
+  baseLayerSelect: document.getElementById('baseLayerSelect'),
+  coordInput: document.getElementById('coordInput'),
+  coordLat: document.getElementById('coordLat'),
+  coordLng: document.getElementById('coordLng'),
+  cursorCoords: document.getElementById('cursorCoords'),
+  polygonName: document.getElementById('polygonName'),
+  showSavedPolygonsCheck: document.getElementById('showSavedPolygonsCheck'),
+  createFreeAreaCheck: document.getElementById('createFreeAreaCheck'),
+  filterFreeCheck: document.getElementById('filterFreeCheck'),
+  filterQuality: document.getElementById('filterQuality'),
+  filterScaleTag: document.getElementById('filterScaleTag'),
+  filterDateFrom: document.getElementById('filterDateFrom'),
+  filterDateTo: document.getElementById('filterDateTo'),
+  filterIncludeUndated: document.getElementById('filterIncludeUndated'),
+  filterClouds: document.getElementById('filterClouds'),
+  filterSnow: document.getElementById('filterSnow'),
+  resetFiltersBtn: document.getElementById('resetFiltersBtn'),
+  editModeBtn: document.getElementById('editModeBtn'),
+  viewModeBtn: document.getElementById('viewModeBtn'),
+  localDataBtn: document.getElementById('localDataBtn'),
+  remoteDataBtn: document.getElementById('remoteDataBtn'),
+  remoteBasePathInput: document.getElementById('remoteBasePathInput'),
+  reloadRemoteIndexBtn: document.getElementById('reloadRemoteIndexBtn'),
+  trainingBtn: document.getElementById('trainingBtn'),
+  trainingModal: document.getElementById('trainingModal'),
+  closeTrainingBtn: document.getElementById('closeTrainingBtn')
+};
+
+let coordinateMarker = null;
+let imageEls = new Map();
+let polygonLayers = new Map();
+let queryLayer = null;
+const photoLibrary = { files: new Map(), order: [] };
+
+function uid(prefix) {
+  return prefix + '_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+}
+
+function setStatus(text) {
+  els.status.textContent = text;
+}
+
+function escapeHtml(text) {
+  return String(text || '').replace(/[&<>'"]/g, ch => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+  }[ch]));
+}
+
+function shortText(text, limit = 90) {
+  const clean = String(text || '').trim().replace(/\s+/g, ' ');
+  return clean.length > limit ? clean.slice(0, limit - 1) + '…' : clean;
+}
+
+function clampOpacity(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return 0.66;
+  return Math.max(0, Math.min(1, n));
+}
+
+const QUALITY_LABELS = {
+  bad: 'плохое',
+  satisfactory: 'удовлетворительное',
+  good: 'хорошее',
+  excellent: 'отличное'
+};
+
+function validQuality(value) {
+  return Object.prototype.hasOwnProperty.call(QUALITY_LABELS, value) ? value : 'satisfactory';
+}
+
+const SCALE_LABELS = {
+  small: 'маленький',
+  medium: 'средний',
+  large: 'большой'
+};
+
+function validScaleTag(value) {
+  return Object.prototype.hasOwnProperty.call(SCALE_LABELS, value) ? value : 'medium';
+}
+
+function normalizeMonthValue(value) {
+  const text = String(value || '').trim();
+  return /^\d{4}-\d{2}$/.test(text) ? text : '';
+}
+
+function formatMonth(value) {
+  const month = normalizeMonthValue(value);
+  if (!month) return 'без даты';
+  const [year, m] = month.split('-');
+  const names = ['январь', 'февраль', 'март', 'апрель', 'май', 'июнь', 'июль', 'август', 'сентябрь', 'октябрь', 'ноябрь', 'декабрь'];
+  return names[Number(m) - 1] + ' ' + year;
+}
+
+function boolText(value) {
+  return value ? 'есть' : 'нет';
+}
+
+function normalizeImageMetadata(img) {
+  if (!img) return img;
+  img.quality = validQuality(img.quality);
+  img.scaleTag = validScaleTag(img.scaleTag);
+  img.dateEnabled = Boolean(img.dateEnabled && normalizeMonthValue(img.dateMonth));
+  img.dateMonth = img.dateEnabled ? normalizeMonthValue(img.dateMonth) : '';
+  img.clouds = Boolean(img.clouds);
+  img.snow = Boolean(img.snow);
+  return img;
+}
+
+function readImageMetadataControls() {
+  const dateMonth = normalizeMonthValue(els.imageDateMonth.value);
+  return {
+    quality: validQuality(els.imageQuality.value),
+    scaleTag: validScaleTag(els.imageScaleTag.value),
+    dateEnabled: Boolean(els.imageDateEnabled.checked && dateMonth),
+    dateMonth: els.imageDateEnabled.checked ? dateMonth : '',
+    clouds: Boolean(els.imageClouds.checked),
+    snow: Boolean(els.imageSnow.checked)
+  };
+}
+
+function imageBadgesHtml(img) {
+  if (!img) return '';
+  normalizeImageMetadata(img);
+  const parts = [
+    `<span class="badge metaBadge">качество: ${escapeHtml(QUALITY_LABELS[img.quality])}</span>`,
+    `<span class="badge metaBadge">масштаб: ${escapeHtml(SCALE_LABELS[img.scaleTag])}</span>`,
+    `<span class="badge metaBadge">${escapeHtml(img.dateEnabled ? formatMonth(img.dateMonth) : 'без даты')}</span>`
+  ];
+  if (img.clouds) parts.push('<span class="badge warnBadge">облака</span>');
+  if (img.snow) parts.push('<span class="badge warnBadge">снег</span>');
+  return parts.join(' ');
+}
+
+function imageMetadataText(img) {
+  if (!img) return 'Файл не выбран.';
+  normalizeImageMetadata(img);
+  const comment = (img.comment || '').trim();
+  return [
+    'Файл: ' + (img.name || 'без названия'),
+    'Имя исходного изображения: ' + (img.fileName || img.name || 'не задано'),
+    'Изображение в JSON: не сохраняется',
+    'Источник изображения: ' + (img.imageUrl ? img.imageUrl : (img.dataUrl ? 'загружено локально в текущей сессии' : 'не задан')),
+    'Качество: ' + QUALITY_LABELS[img.quality],
+    'Масштаб: ' + SCALE_LABELS[img.scaleTag],
+    'Дата: ' + (img.dateEnabled ? formatMonth(img.dateMonth) : 'без даты'),
+    'Облака: ' + boolText(img.clouds),
+    'Снежный покров: ' + boolText(img.snow),
+    'Комментарий: ' + (comment ? comment : 'не задан')
+  ].join('\n');
+}
+
+function readFiltersFromControls() {
+  state.filterFreeOnly = Boolean(els.filterFreeCheck.checked);
+  state.filters = {
+    quality: els.filterQuality.value || 'any',
+    scaleTag: els.filterScaleTag.value || 'any',
+    dateFrom: normalizeMonthValue(els.filterDateFrom.value),
+    dateTo: normalizeMonthValue(els.filterDateTo.value),
+    includeUndated: Boolean(els.filterIncludeUndated.checked),
+    clouds: els.filterClouds.value || 'any',
+    snow: els.filterSnow.value || 'any'
+  };
+}
+
+function syncFilterControls() {
+  if (els.filterFreeCheck) els.filterFreeCheck.checked = Boolean(state.filterFreeOnly);
+  if (els.filterQuality) els.filterQuality.value = state.filters.quality || 'any';
+  if (els.filterScaleTag) els.filterScaleTag.value = state.filters.scaleTag || 'any';
+  if (els.filterDateFrom) els.filterDateFrom.value = state.filters.dateFrom || '';
+  if (els.filterDateTo) els.filterDateTo.value = state.filters.dateTo || '';
+  if (els.filterIncludeUndated) els.filterIncludeUndated.checked = state.filters.includeUndated !== false;
+  if (els.filterClouds) els.filterClouds.value = state.filters.clouds || 'any';
+  if (els.filterSnow) els.filterSnow.value = state.filters.snow || 'any';
+}
+
+function matchesFilters(poly) {
+  if (state.filterFreeOnly && !Boolean(poly.free)) return false;
+  const img = state.images.find(x => x.id === poly.imageId);
+  if (!img) return false;
+  normalizeImageMetadata(img);
+  const f = state.filters || {};
+  if (f.quality && f.quality !== 'any' && img.quality !== f.quality) return false;
+  if (f.scaleTag && f.scaleTag !== 'any' && img.scaleTag !== f.scaleTag) return false;
+  const hasDate = Boolean(img.dateEnabled && normalizeMonthValue(img.dateMonth));
+  if (!hasDate && f.includeUndated === false) return false;
+  if (hasDate) {
+    if (f.dateFrom && img.dateMonth < f.dateFrom) return false;
+    if (f.dateTo && img.dateMonth > f.dateTo) return false;
+  } else if ((f.dateFrom || f.dateTo) && f.includeUndated === false) {
+    return false;
+  }
+  if (f.clouds === 'yes' && !img.clouds) return false;
+  if (f.clouds === 'no' && img.clouds) return false;
+  if (f.snow === 'yes' && !img.snow) return false;
+  if (f.snow === 'no' && img.snow) return false;
+  return true;
+}
+
+function filtersChanged() {
+  readFiltersFromControls();
+  if (state.queryPolygon) runIntersectionSearch();
+  else renderAll();
+}
+
+function setInterfaceMode(mode) {
+  if (mode !== 'view' && state.dataSourceMode === 'remote') {
+    state.interfaceMode = 'view';
+    setStatus('Готовая привязка из GitHub открывается только для просмотра. Для редактирования переключитесь в «Мой проект».');
+  } else {
+    state.interfaceMode = mode === 'view' ? 'view' : 'edit';
+  }
+  document.body.classList.toggle('view-mode', state.interfaceMode === 'view');
+  document.body.classList.toggle('edit-mode', state.interfaceMode !== 'view');
+  els.editModeBtn.classList.toggle('active', state.interfaceMode === 'edit');
+  els.viewModeBtn.classList.toggle('active', state.interfaceMode === 'view');
+  if (state.interfaceMode === 'view') {
+    cancelDrawing(false);
+    state.mode = null;
+    els.photoViewport.classList.remove('pointMode');
+    renderAll(false);
+  }
+  setTimeout(() => {
+    map.invalidateSize();
+    renderImages(Boolean(state.selectedPolygonId));
+  }, 100);
+}
+
+function setDataSourceMode(mode) {
+  const next = mode === 'remote' ? 'remote' : 'local';
+  if (state.dataSourceMode === next) return;
+  state.dataSourceMode = next;
+  state.selectedImageId = null;
+  state.selectedPolygonId = null;
+  state.currentImageDraft = null;
+  state.queryPolygon = null;
+  state.results = [];
+  cancelDrawing(false);
+  els.localDataBtn.classList.toggle('active', next === 'local');
+  els.remoteDataBtn.classList.toggle('active', next === 'remote');
+  if (next === 'remote') {
+    setInterfaceMode('view');
+    loadRemoteIndex(false);
+    setStatus('Включён режим готовой привязки. Нарисуйте проверочную область: приложение загрузит нужные квадраты из GitHub.');
+  } else {
+    setStatus('Включён режим своего проекта. Здесь можно загружать снимки, ставить точки и сохранять JSON без встроенных фото.');
+  }
+  showPhotoImage(null);
+  renderAll();
+}
+
+els.editModeBtn.onclick = () => setInterfaceMode('edit');
+els.viewModeBtn.onclick = () => setInterfaceMode('view');
+els.localDataBtn.onclick = () => setDataSourceMode('local');
+els.remoteDataBtn.onclick = () => setDataSourceMode('remote');
+els.remoteBasePathInput.addEventListener('change', () => {
+  state.remoteBasePath = normalizeRemoteBasePath(els.remoteBasePathInput.value);
+  state.remoteLoadedTiles = {};
+  state.remoteImages = [];
+  state.remotePolygons = [];
+  state.remoteAvailableTiles = null;
+  if (state.dataSourceMode === 'remote') {
+    loadRemoteIndex(true);
+    renderAll();
+  }
+});
+els.reloadRemoteIndexBtn.onclick = () => loadRemoteIndex(true);
+
+function setBaseLayer(key) {
+  const normalized = key === 'satellite' ? 'satellite' : 'street';
+  Object.entries(baseLayers).forEach(([layerKey, layer]) => {
+    if (layerKey !== normalized && map.hasLayer(layer)) map.removeLayer(layer);
+  });
+  if (!map.hasLayer(baseLayers[normalized])) baseLayers[normalized].addTo(map);
+  state.mapBaseLayer = normalized;
+  if (els.baseLayerSelect) els.baseLayerSelect.value = normalized;
+}
+
+map.on('baselayerchange', (ev) => {
+  state.mapBaseLayer = ev.name === 'Спутник' ? 'satellite' : 'street';
+  if (els.baseLayerSelect) els.baseLayerSelect.value = state.mapBaseLayer;
+});
+
+function formatCoord(value) {
+  return Number(value).toFixed(6);
+}
+
+function parseCoordPair() {
+  const raw = (els.coordInput.value || '').trim();
+  let lat;
+  let lng;
+  if (raw) {
+    const nums = raw.match(/[-+]?\d+(?:[\.,]\d+)?/g);
+    if (nums && nums.length >= 2) {
+      lat = Number(nums[0].replace(',', '.'));
+      lng = Number(nums[1].replace(',', '.'));
+    }
+  }
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+    lat = Number(String(els.coordLat.value || '').replace(',', '.'));
+    lng = Number(String(els.coordLng.value || '').replace(',', '.'));
+  }
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) throw new Error('Введите координаты в формате: 54.352, 18.646');
+  if (lat < -90 || lat > 90) throw new Error('Широта должна быть от -90 до 90.');
+  if (lng < -180 || lng > 180) throw new Error('Долгота должна быть от -180 до 180.');
+  return { lat, lng };
+}
+
+function setCoordinateMarker(lat, lng, moveMap = true) {
+  const latlng = [lat, lng];
+  if (!coordinateMarker) {
+    coordinateMarker = L.circleMarker(latlng, {
+      radius: 4,
+      weight: 2,
+      color: '#000',
+      fillColor: '#ffff00',
+      fillOpacity: 1
+    }).addTo(map);
+  } else {
+    coordinateMarker.setLatLng(latlng);
+  }
+  coordinateMarker.bindTooltip(`${formatCoord(lat)}, ${formatCoord(lng)}`, { permanent: false });
+  els.coordLat.value = formatCoord(lat);
+  els.coordLng.value = formatCoord(lng);
+  els.coordInput.value = `${formatCoord(lat)}, ${formatCoord(lng)}`;
+  if (moveMap) map.setView(latlng, Math.max(map.getZoom(), 16));
+}
+
+function goToCoordinates() {
+  try {
+    const c = parseCoordPair();
+    setCoordinateMarker(c.lat, c.lng, true);
+    setStatus('Карта наведена на координаты: ' + formatCoord(c.lat) + ', ' + formatCoord(c.lng));
+  } catch (e) {
+    setStatus('Ошибка координат: ' + e.message);
+  }
+}
+
+els.baseLayerSelect.addEventListener('change', () => setBaseLayer(els.baseLayerSelect.value));
+document.getElementById('goToCoordBtn').onclick = goToCoordinates;
+els.coordInput.addEventListener('keydown', ev => { if (ev.key === 'Enter') goToCoordinates(); });
+els.coordLat.addEventListener('keydown', ev => { if (ev.key === 'Enter') goToCoordinates(); });
+els.coordLng.addEventListener('keydown', ev => { if (ev.key === 'Enter') goToCoordinates(); });
+document.getElementById('useMapCenterBtn').onclick = () => {
+  const c = map.getCenter();
+  setCoordinateMarker(c.lat, c.lng, false);
+  setStatus('В поля координат записан текущий центр карты.');
+};
+document.getElementById('clearCoordMarkerBtn').onclick = () => {
+  if (coordinateMarker) {
+    coordinateMarker.remove();
+    coordinateMarker = null;
+  }
+  setStatus('Координатная метка убрана.');
+};
+map.on('mousemove', ev => {
+  if (els.cursorCoords) els.cursorCoords.textContent = 'Курсор: ' + formatCoord(ev.latlng.lat) + ', ' + formatCoord(ev.latlng.lng);
+});
+
+function normalizeRemoteBasePath(value) {
+  const clean = String(value || 'data').trim() || 'data';
+  return clean.replace(/\/+$/, '');
+}
+
+function remoteUrl(path) {
+  const base = normalizeRemoteBasePath(els.remoteBasePathInput ? els.remoteBasePathInput.value : state.remoteBasePath);
+  state.remoteBasePath = base;
+  return base + '/' + String(path || '').replace(/^\/+/, '');
+}
+
+function resolveRemoteAssetUrl(url, baseUrl) {
+  const text = String(url || '').trim();
+  if (!text) return '';
+  try { return new URL(text, baseUrl).href; } catch (e) { return text; }
+}
+
+function resolveRemoteImageUrl(img, tileUrl) {
+  const raw = String(img.imageUrl || img.url || img.imagePath || img.path || '').trim();
+  if (!raw) return '';
+  if (/^https?:\/\//i.test(raw) || raw.startsWith('data:') || raw.startsWith('blob:')) return raw;
+  const normalized = raw.replace(/\\/g, '/').replace(/^\.\//, '');
+  if (normalized.startsWith('../')) return resolveRemoteAssetUrl(normalized, tileUrl);
+  return resolveRemoteAssetUrl(normalized, remoteUrl(''));
+}
+
+async function fetchJsonIfExists(url) {
+  const response = await fetch(url, { cache: 'no-cache' });
+  if (!response.ok) {
+    if (response.status === 404) return null;
+    throw new Error('HTTP ' + response.status + ' при загрузке ' + url);
+  }
+  return response.json();
+}
+
+async function loadRemoteIndex(showStatus = true) {
+  const url = remoteUrl('index.json');
+  try {
+    const data = await fetchJsonIfExists(url);
+    if (data && Array.isArray(data.tiles)) {
+      state.remoteAvailableTiles = new Set(data.tiles.map(String));
+      if (showStatus) setStatus('Индекс готовых привязок загружен. Квадратов в индексе: ' + state.remoteAvailableTiles.size + '.');
+    } else {
+      state.remoteAvailableTiles = null;
+      if (showStatus) setStatus('index.json не найден. Приложение будет пробовать загружать файлы квадратов напрямую.');
+    }
+  } catch (e) {
+    state.remoteAvailableTiles = null;
+    if (showStatus) setStatus('Индекс не загружен: ' + e.message + '. Квадраты будут проверяться прямой загрузкой.');
+  }
+}
+
+function tileNameFromBase(latBase, lngBase) {
+  const latPart = Math.abs(latBase) + (latBase >= 0 ? 'N' : 'S');
+  const lngPart = Math.abs(lngBase) + (lngBase >= 0 ? 'E' : 'W');
+  return latPart + lngPart;
+}
+
+function tilesForPolygon(points) {
+  if (!Array.isArray(points) || !points.length) return [];
+  const lats = points.map(p => Number(p[0])).filter(Number.isFinite);
+  const lngs = points.map(p => Number(p[1])).filter(Number.isFinite);
+  if (!lats.length || !lngs.length) return [];
+  const minLat = Math.floor(Math.min(...lats));
+  const maxLat = Math.floor(Math.max(...lats));
+  const minLng = Math.floor(Math.min(...lngs));
+  const maxLng = Math.floor(Math.max(...lngs));
+  const result = [];
+  for (let lat = minLat; lat <= maxLat; lat++) {
+    for (let lng = minLng; lng <= maxLng; lng++) {
+      result.push(tileNameFromBase(lat, lng));
+    }
+  }
+  return result;
+}
+
+function prefixedRemoteId(tile, id, fallbackPrefix) {
+  const raw = String(id || uid(fallbackPrefix));
+  return raw.startsWith('remote_' + tile + '_') ? raw : 'remote_' + tile + '_' + raw;
+}
+
+function normalizeRemoteTilePayload(payload, tile, tileUrl) {
+  const images = [];
+  const polygons = [];
+  const imageIdMap = new Map();
+  const addImage = (img, idx) => {
+    const newId = prefixedRemoteId(tile, img.id || img.name || idx, 'img');
+    imageIdMap.set(String(img.id || newId), newId);
+    const image = normalizeProjectImage({
+      ...stripEmbeddedImageData(img),
+      id: newId,
+      source: 'remote',
+      sourceTile: tile,
+      imageUrl: resolveRemoteImageUrl(img, tileUrl),
+      imagePath: img.imagePath || img.path || ''
+    }, idx);
+    images.push(image);
+    return image;
+  };
+
+  if (Array.isArray(payload.images)) {
+    payload.images.forEach((img, idx) => {
+      const image = addImage(img, idx);
+      if (Array.isArray(img.polygons)) {
+        img.polygons.forEach((poly, pIdx) => {
+          polygons.push({
+            ...poly,
+            id: prefixedRemoteId(tile, poly.id || image.id + '_poly_' + pIdx, 'poly'),
+            imageId: image.id,
+            name: poly.name || image.name + ' · область ' + (pIdx + 1),
+            points: Array.isArray(poly.points) ? poly.points : [],
+            free: Boolean(poly.free),
+            source: 'remote',
+            sourceTile: tile
+          });
+        });
+      }
+    });
+  }
+
+  if (Array.isArray(payload.polygons)) {
+    payload.polygons.forEach((poly, idx) => {
+      const mappedImageId = imageIdMap.get(String(poly.imageId)) || prefixedRemoteId(tile, poly.imageId || 'no_image', 'img');
+      polygons.push({
+        ...poly,
+        id: prefixedRemoteId(tile, poly.id || idx, 'poly'),
+        imageId: mappedImageId,
+        name: poly.name || ('Область ' + (idx + 1)),
+        points: Array.isArray(poly.points) ? poly.points : [],
+        free: Boolean(poly.free),
+        source: 'remote',
+        sourceTile: tile
+      });
+    });
+  }
+
+  return { images, polygons };
+}
+
+async function loadRemoteTile(tile) {
+  if (state.remoteLoadedTiles[tile]) return { loaded: false, skipped: true };
+  if (state.remoteAvailableTiles && !state.remoteAvailableTiles.has(tile)) {
+    state.remoteLoadedTiles[tile] = 'missing-index';
+    return { loaded: false, skipped: true };
+  }
+  const url = remoteUrl('tiles/' + tile + '.json');
+  const payload = await fetchJsonIfExists(url);
+  if (!payload) {
+    state.remoteLoadedTiles[tile] = 'missing';
+    return { loaded: false, skipped: true };
+  }
+  const normalized = normalizeRemoteTilePayload(payload, tile, url);
+  state.remoteImages.push(...normalized.images);
+  state.remotePolygons.push(...normalized.polygons.filter(p => Array.isArray(p.points) && p.points.length >= 3));
+  state.remoteLoadedTiles[tile] = 'loaded';
+  return { loaded: true, images: normalized.images.length, polygons: normalized.polygons.length };
+}
+
+async function loadRemoteTilesForPolygon(points) {
+  const tiles = tilesForPolygon(points);
+  if (!tiles.length) return;
+  let loaded = 0;
+  let skipped = 0;
+  let errors = 0;
+  for (const tile of tiles) {
+    try {
+      const r = await loadRemoteTile(tile);
+      if (r.loaded) loaded += 1;
+      else skipped += 1;
+    } catch (e) {
+      errors += 1;
+      console.warn(e);
+    }
+  }
+  setStatus('Проверены квадраты: ' + tiles.join(', ') + '. Загружено новых файлов: ' + loaded + ', пропущено: ' + skipped + (errors ? ', ошибок: ' + errors : '') + '.');
+}
+
+function fileToDataURL(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = reject;
+    r.readAsDataURL(file);
+  });
+}
+
+function loadImageMeta(src) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
+    img.onerror = reject;
+    img.src = src;
+  });
+}
+
+function fileKeyCandidates(img) {
+  if (!img) return [];
+  const values = [
+    img.fileName,
+    img.imageFileName,
+    img.sourceFileName,
+    img.name,
+    img.imagePath,
+    img.path,
+    img.imageUrl,
+    img.url
+  ].filter(Boolean).map(v => String(v).replace(/\\/g, '/'));
+  const out = [];
+  values.forEach(v => {
+    out.push(v);
+    out.push(v.split('/').pop());
+  });
+  return [...new Set(out.filter(Boolean))];
+}
+
+function imageSource(img) {
+  if (!img) return '';
+  if (img.dataUrl) return img.dataUrl;
+  if (img.objectUrl) return img.objectUrl;
+  for (const key of fileKeyCandidates(img)) {
+    const record = photoLibrary.files.get(key);
+    if (record) {
+      if (!record.objectUrl) record.objectUrl = URL.createObjectURL(record.file);
+      img.objectUrl = record.objectUrl;
+      return record.objectUrl;
+    }
+  }
+  return img.imageUrl || img.url || img.imagePath || img.path || '';
+}
+
+function stripEmbeddedImageData(img) {
+  const out = { ...img };
+  delete out.dataUrl;
+  delete out.imageData;
+  delete out.data;
+  delete out.objectUrl;
+  if (!out.fileName && out.name) out.fileName = out.name;
+  if (!out.imageUrl) out.imageUrl = img.imageUrl || img.url || '';
+  return out;
+}
+
+function normalizeProjectImage(img, idx = 0) {
+  const out = normalizeImageMetadata({
+    ...img,
+    opacity: clampOpacity(typeof img.opacity === 'number' ? img.opacity : 0.66),
+    comment: typeof img.comment === 'string' ? img.comment : '',
+    name: img.name || img.fileName || ('Снимок ' + (idx + 1)),
+    fileName: img.fileName || img.imageFileName || img.sourceFileName || img.name || '',
+    imagePath: img.imagePath || img.path || '',
+    imageUrl: img.imageUrl || img.url || '',
+    dataUrl: img.dataUrl || ''
+  });
+  return out;
+}
+
+function imageHasDisplaySource(img) {
+  return Boolean(imageSource(img));
+}
+
+function activePhotoImage() {
+  if (state.currentImageDraft) return state.currentImageDraft;
+  if (state.selectedImageId) return state.images.find(x => x.id === state.selectedImageId) || null;
+  return null;
+}
+
+function selectedStoredImage() {
+  return state.selectedImageId ? state.images.find(x => x.id === state.selectedImageId) || null : null;
+}
+
+function cloneNormPoint(pt) {
+  return pt ? { x: Number(pt.x), y: Number(pt.y) } : null;
+}
+
+function cloneMapPoint(pt) {
+  return Array.isArray(pt) ? [Number(pt[0]), Number(pt[1])] : null;
+}
+
+function hasAnyGeorefPoints(img) {
+  return Boolean(img && (img.imgPt1 || img.imgPt2 || img.mapPt1 || img.mapPt2));
+}
+
+function hasFullGeorefPoints(img) {
+  return Boolean(img && img.imgPt1 && img.imgPt2 && img.mapPt1 && img.mapPt2);
+}
+
+function copyGeorefPointsFromTemplate(target, template) {
+  if (!target || !template) return;
+  target.imgPt1 = cloneNormPoint(template.imgPt1);
+  target.imgPt2 = cloneNormPoint(template.imgPt2);
+  target.mapPt1 = cloneMapPoint(template.mapPt1);
+  target.mapPt2 = cloneMapPoint(template.mapPt2);
+}
+
+function recomputeGeorefIfPossible(img) {
+  if (!hasFullGeorefPoints(img)) return false;
+  img.georef = computeGeoref(img);
+  return true;
+}
+
+function syncImageControls(img) {
+  if (!img) {
+    els.imageName.value = '';
+    els.imageUrl.value = '';
+    els.imageComment.value = '';
+    els.imageQuality.value = 'satisfactory';
+    els.imageScaleTag.value = 'medium';
+    els.imageDateEnabled.checked = false;
+    els.imageDateMonth.value = '';
+    els.imageDateMonth.disabled = true;
+    els.imageClouds.checked = false;
+    els.imageSnow.checked = false;
+    els.overlayOpacityRange.value = '66';
+    els.overlayOpacityValue.textContent = '66%';
+    return;
+  }
+  if (typeof img.opacity !== 'number') img.opacity = 0.66;
+  if (typeof img.comment !== 'string') img.comment = '';
+  normalizeImageMetadata(img);
+  els.imageName.value = img.name || '';
+  els.imageUrl.value = img.imageUrl || '';
+  els.imageComment.value = img.comment || '';
+  els.imageQuality.value = img.quality;
+  els.imageScaleTag.value = img.scaleTag;
+  els.imageDateEnabled.checked = Boolean(img.dateEnabled);
+  els.imageDateMonth.disabled = !els.imageDateEnabled.checked;
+  els.imageDateMonth.value = img.dateMonth || '';
+  els.imageClouds.checked = Boolean(img.clouds);
+  els.imageSnow.checked = Boolean(img.snow);
+  const percent = Math.round(clampOpacity(img.opacity) * 100);
+  els.overlayOpacityRange.value = String(percent);
+  els.overlayOpacityValue.textContent = percent + '%';
+}
+
+function saveImageMetaFromControls(silent = false) {
+  const img = activePhotoImage();
+  if (!img) {
+    if (!silent) setStatus('Сначала загрузите или выберите снимок.');
+    return;
+  }
+  img.name = els.imageName.value.trim() || img.name || 'Без названия';
+  img.imageUrl = els.imageUrl.value.trim();
+  img.comment = els.imageComment.value;
+  Object.assign(img, readImageMetadataControls());
+  normalizeImageMetadata(img);
+  img.opacity = clampOpacity(Number(els.overlayOpacityRange.value) / 100);
+  els.overlayOpacityValue.textContent = Math.round(img.opacity * 100) + '%';
+  if (img.georef) updateImagePosition(img, Boolean(state.selectedPolygonId));
+  renderLists();
+  if (!silent) setStatus('Свойства, комментарий и прозрачность выбранного снимка сохранены.');
+}
+
+function selectedCommentText() {
+  let img = null;
+  if (state.selectedPolygonId) {
+    const p = state.polygons.find(x => x.id === state.selectedPolygonId);
+    img = p ? state.images.find(x => x.id === p.imageId) : null;
+  }
+  if (!img && state.selectedImageId) img = state.images.find(x => x.id === state.selectedImageId);
+  if (!img) return 'Файл не выбран.';
+  return imageMetadataText(img);
+}
+
+function showPhotoImage(img, keepView = false) {
+  if (!img) {
+    els.photoImg.style.display = 'none';
+    els.photoImg.removeAttribute('src');
+    els.photoInfo.textContent = 'нет снимка';
+    clearPhotoMarks();
+    clearMapRefMarkers();
+    syncImageControls(null);
+    return;
+  }
+  const src = imageSource(img);
+  syncImageControls(img);
+  rebuildMapRefMarkersForImage(img);
+  if (!src) {
+    els.photoImg.style.display = 'none';
+    els.photoImg.removeAttribute('src');
+    els.photoInfo.textContent = (img.name || 'снимок') + ' · файл не встроен в JSON';
+    clearPhotoMarks();
+    return;
+  }
+  els.photoImg.src = src;
+  els.photoImg.style.display = 'block';
+  els.photoImg.style.width = img.width + 'px';
+  els.photoImg.style.height = img.height + 'px';
+  els.photoLayer.style.width = img.width + 'px';
+  els.photoLayer.style.height = img.height + 'px';
+  els.photoInfo.textContent = img.name + ' · ' + img.width + '×' + img.height;
+  if (!keepView) fitPhotoToViewport();
+  else updatePhotoTransform();
+}
+
+function clearPhotoMarks() {
+  [...els.photoViewport.querySelectorAll('.photoPoint')].forEach(e => e.remove());
+}
+
+function addPhotoMark(norm, label) {
+  const img = activePhotoImage();
+  if (!img) return;
+  const p = document.createElement('div');
+  p.className = 'photoPoint';
+  p.dataset.label = label;
+  p.style.left = (photoView.offsetX + norm.x * img.width * photoView.scale) + 'px';
+  p.style.top = (photoView.offsetY + norm.y * img.height * photoView.scale) + 'px';
+  els.photoViewport.appendChild(p);
+}
+
+function rebuildPhotoMarks() {
+  clearPhotoMarks();
+  const d = activePhotoImage();
+  if (!d) return;
+  if (d.imgPt1) addPhotoMark(d.imgPt1, '1');
+  if (d.imgPt2) addPhotoMark(d.imgPt2, '2');
+}
+
+function updatePhotoTransform() {
+  els.photoLayer.style.transform = `translate(${photoView.offsetX}px, ${photoView.offsetY}px) scale(${photoView.scale})`;
+  els.photoZoomRange.value = String(Math.round(photoView.scale * 100));
+  rebuildPhotoMarks();
+}
+
+function fitPhotoToViewport() {
+  const img = activePhotoImage();
+  if (!img) return;
+  const rect = els.photoViewport.getBoundingClientRect();
+  if (rect.width < 10 || rect.height < 10) return;
+  const scale = Math.min(rect.width / img.width, rect.height / img.height) * 0.96;
+  photoView.scale = Math.max(0.05, Math.min(8, scale));
+  photoView.offsetX = (rect.width - img.width * photoView.scale) / 2;
+  photoView.offsetY = (rect.height - img.height * photoView.scale) / 2;
+  updatePhotoTransform();
+}
+
+function zoomPhotoAt(clientX, clientY, factor) {
+  const img = activePhotoImage();
+  if (!img) return;
+  const rect = els.photoViewport.getBoundingClientRect();
+  const x = clientX - rect.left;
+  const y = clientY - rect.top;
+  const imgX = (x - photoView.offsetX) / photoView.scale;
+  const imgY = (y - photoView.offsetY) / photoView.scale;
+  const nextScale = Math.max(0.05, Math.min(8, photoView.scale * factor));
+  photoView.offsetX = x - imgX * nextScale;
+  photoView.offsetY = y - imgY * nextScale;
+  photoView.scale = nextScale;
+  updatePhotoTransform();
+}
+
+els.photoViewport.addEventListener('wheel', (ev) => {
+  ev.preventDefault();
+  const factor = ev.deltaY < 0 ? 1.15 : 1 / 1.15;
+  zoomPhotoAt(ev.clientX, ev.clientY, factor);
+}, { passive: false });
+
+els.photoViewport.addEventListener('mousedown', (ev) => {
+  if (!activePhotoImage()) return;
+  photoView.dragging = true;
+  photoView.moved = false;
+  photoView.dragStartX = ev.clientX;
+  photoView.dragStartY = ev.clientY;
+  photoView.dragOffsetX = photoView.offsetX;
+  photoView.dragOffsetY = photoView.offsetY;
+  els.photoViewport.style.cursor = state.mode === 'imgPt1' || state.mode === 'imgPt2' ? 'crosshair' : 'grabbing';
+});
+
+window.addEventListener('mousemove', (ev) => {
+  if (!photoView.dragging) return;
+  const dx = ev.clientX - photoView.dragStartX;
+  const dy = ev.clientY - photoView.dragStartY;
+  if (Math.hypot(dx, dy) > 3) photoView.moved = true;
+  if (state.mode === 'imgPt1' || state.mode === 'imgPt2') return;
+  photoView.offsetX = photoView.dragOffsetX + dx;
+  photoView.offsetY = photoView.dragOffsetY + dy;
+  updatePhotoTransform();
+});
+
+window.addEventListener('mouseup', () => {
+  photoView.dragging = false;
+  els.photoViewport.style.cursor = state.mode === 'imgPt1' || state.mode === 'imgPt2' ? 'crosshair' : 'grab';
+});
+
+els.photoViewport.addEventListener('click', (ev) => {
+  const d = state.currentImageDraft || activePhotoImage();
+  if (!d || (state.mode !== 'imgPt1' && state.mode !== 'imgPt2')) return;
+  if (photoView.moved) return;
+  const rect = els.photoViewport.getBoundingClientRect();
+  const x = (ev.clientX - rect.left - photoView.offsetX) / photoView.scale;
+  const y = (ev.clientY - rect.top - photoView.offsetY) / photoView.scale;
+  if (x < 0 || y < 0 || x > d.width || y > d.height) {
+    setStatus('Точка поставлена вне границ снимка. Приблизьте или сдвиньте фото и поставьте точку внутри изображения.');
+    return;
+  }
+  const norm = { x: x / d.width, y: y / d.height };
+  if (state.mode === 'imgPt1') d.imgPt1 = norm;
+  if (state.mode === 'imgPt2') d.imgPt2 = norm;
+  state.mode = null;
+  els.photoViewport.classList.remove('pointMode');
+  rebuildPhotoMarks();
+  setStatus('Точка на фото задана.');
+});
+
+function setPhotoScaleByPercent(percent) {
+  const rect = els.photoViewport.getBoundingClientRect();
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top + rect.height / 2;
+  const target = Math.max(0.05, Math.min(8, percent / 100));
+  const factor = target / photoView.scale;
+  zoomPhotoAt(cx, cy, factor);
+}
+
+els.photoZoomRange.addEventListener('input', () => setPhotoScaleByPercent(Number(els.photoZoomRange.value)));
+document.getElementById('photoZoomInBtn').onclick = () => {
+  const rect = els.photoViewport.getBoundingClientRect();
+  zoomPhotoAt(rect.left + rect.width / 2, rect.top + rect.height / 2, 1.25);
+};
+document.getElementById('photoZoomOutBtn').onclick = () => {
+  const rect = els.photoViewport.getBoundingClientRect();
+  zoomPhotoAt(rect.left + rect.width / 2, rect.top + rect.height / 2, 1 / 1.25);
+};
+document.getElementById('fitPhotoBtn').onclick = () => fitPhotoToViewport();
+document.getElementById('resetPhotoPanBtn').onclick = () => fitPhotoToViewport();
+window.addEventListener('resize', () => { map.invalidateSize(); updatePhotoTransform(); });
+
+
+function registerPhotoFile(file) {
+  if (!file || !file.type || !file.type.startsWith('image/')) return;
+  const rel = String(file.webkitRelativePath || file.name).replace(/\\/g, '/');
+  const name = file.name;
+  const candidates = [...new Set([rel, name, rel.split('/').slice(1).join('/'), rel.split('/').pop()].filter(Boolean))];
+  let objectUrl = '';
+  candidates.forEach(key => {
+    const old = photoLibrary.files.get(key);
+    if (old && old.objectUrl) objectUrl = old.objectUrl;
+    photoLibrary.files.set(key, { file, objectUrl });
+  });
+  if (!photoLibrary.order.includes(rel)) photoLibrary.order.push(rel);
+}
+
+function refreshFolderSelect() {
+  if (!els.folderPhotoSelect) return;
+  els.folderPhotoSelect.innerHTML = '';
+  if (!photoLibrary.order.length) {
+    const opt = document.createElement('option');
+    opt.value = '';
+    opt.textContent = 'папка с фото не выбрана';
+    els.folderPhotoSelect.appendChild(opt);
+    return;
+  }
+  photoLibrary.order.slice().sort((a, b) => a.localeCompare(b, 'ru')).forEach(path => {
+    const opt = document.createElement('option');
+    opt.value = path;
+    opt.textContent = path;
+    els.folderPhotoSelect.appendChild(opt);
+  });
+}
+
+function selectedFolderFile() {
+  if (!els.folderPhotoSelect) return null;
+  const key = els.folderPhotoSelect.value;
+  const record = photoLibrary.files.get(key) || photoLibrary.files.get(String(key).split('/').pop());
+  return record ? record.file : null;
+}
+
+async function loadImageFileAsDraft(file, template = null) {
+  const dataUrl = await fileToDataURL(file);
+  const meta = await loadImageMeta(dataUrl);
+  const draft = {
+    id: uid('img'),
+    name: els.imageName.value.trim() || file.name,
+    fileName: file.name,
+    imagePath: String(file.webkitRelativePath || file.name).replace(/\\/g, '/'),
+    imageUrl: els.imageUrl.value.trim(),
+    dataUrl,
+    width: meta.width,
+    height: meta.height,
+    imgPt1: null,
+    imgPt2: null,
+    mapPt1: null,
+    mapPt2: null,
+    georef: null,
+    opacity: clampOpacity(Number(els.overlayOpacityRange.value) / 100),
+    comment: els.imageComment.value || '',
+    ...readImageMetadataControls()
+  };
+  normalizeImageMetadata(draft);
+  if (template && hasAnyGeorefPoints(template)) {
+    copyGeorefPointsFromTemplate(draft, template);
+    try {
+      recomputeGeorefIfPossible(draft);
+    } catch (e) {
+      draft.georef = null;
+      setStatus('Точки скопированы, но привязку нужно пересчитать: ' + e.message);
+    }
+  }
+  state.currentImageDraft = draft;
+  state.selectedImageId = null;
+  state.selectedPolygonId = null;
+  showPhotoImage(state.currentImageDraft, false);
+  renderAll();
+  if (template && hasAnyGeorefPoints(template)) {
+    setStatus('Новый снимок создан отдельно. Точки привязки скопированы с выбранного снимка. Старые области и старый файл не изменены.');
+  } else {
+    setStatus('Изображение загружено. Укажите две точки на фото и две точки на карте.');
+  }
+}
+
+async function replaceSelectedImageWithFile(file) {
+  const img = selectedStoredImage();
+  if (!img) {
+    setStatus('Выберите снимок из списка проекта.');
+    return;
+  }
+  if (!confirm('Заменить файл внутри выбранного снимка? Старые области этого снимка начнут ссылаться на новый файл.')) return;
+  const dataUrl = await fileToDataURL(file);
+  const meta = await loadImageMeta(dataUrl);
+  const oldRatio = img.width / img.height;
+  const newRatio = meta.width / meta.height;
+  if (Math.abs(oldRatio - newRatio) > 0.01) {
+    if (!confirm('Отношение сторон отличается. Привязка может стать неправильной. Всё равно заменить?')) return;
+  }
+  const oldGeoref = img.georef ? { ...img.georef } : null;
+  img.dataUrl = dataUrl;
+  img.fileName = file.name;
+  img.imagePath = String(file.webkitRelativePath || file.name).replace(/\\/g, '/');
+  img.imageUrl = els.imageUrl.value.trim() || img.imageUrl || '';
+  img.width = meta.width;
+  img.height = meta.height;
+  img.name = els.imageName.value.trim() || file.name;
+  img.comment = els.imageComment.value || img.comment || '';
+  Object.assign(img, readImageMetadataControls());
+  normalizeImageMetadata(img);
+  img.opacity = clampOpacity(Number(els.overlayOpacityRange.value) / 100);
+  try {
+    if (!recomputeGeorefIfPossible(img) && oldGeoref) img.georef = oldGeoref;
+  } catch (e) {
+    img.georef = oldGeoref;
+    setStatus('Файл заменён, но привязка оставлена по старому расчёту: ' + e.message);
+  }
+  state.currentImageDraft = null;
+  state.selectedImageId = img.id;
+  showPhotoImage(img, true);
+  renderAll();
+  setStatus('Файл выбранного снимка заменён.');
+}
+
+els.imageInput.addEventListener('change', async () => {
+  const file = els.imageInput.files[0];
+  if (!file) return;
+  registerPhotoFile(file);
+  refreshFolderSelect();
+  const selected = selectedStoredImage();
+  await loadImageFileAsDraft(file, selected);
+});
+
+if (els.photoFolderInput) {
+  els.photoFolderInput.addEventListener('change', () => {
+    const files = [...els.photoFolderInput.files].filter(file => file.type && file.type.startsWith('image/'));
+    files.forEach(registerPhotoFile);
+    refreshFolderSelect();
+    renderAll();
+    setStatus('Папка с фото выбрана. Найдено изображений: ' + files.length + '. Теперь снимок можно выбрать из списка.');
+  });
+}
+
+if (els.loadFolderPhotoBtn) {
+  els.loadFolderPhotoBtn.onclick = async () => {
+    const file = selectedFolderFile();
+    if (!file) return setStatus('Сначала выберите фото из списка папки.');
+    const selected = selectedStoredImage();
+    await loadImageFileAsDraft(file, selected);
+  };
+}
+
+document.getElementById('replaceImageBtn').onclick = async () => {
+  const file = els.imageInput.files[0] || selectedFolderFile();
+  if (!file) return setStatus('Сначала выберите новый файл изображения или снимок из папки.');
+  await replaceSelectedImageWithFile(file);
+};
+
+function oneShotMode(mode, text) {
+  if (state.interfaceMode === 'view') return setStatus('Точки привязки задаются только в режиме редактора.');
+  state.mode = mode;
+  els.photoViewport.classList.toggle('pointMode', mode === 'imgPt1' || mode === 'imgPt2');
+  setStatus(text);
+}
+
+document.getElementById('setImgPt1Btn').onclick = () => oneShotMode('imgPt1', 'Приблизьте фото слева и кликните точку 1 на снимке.');
+document.getElementById('setImgPt2Btn').onclick = () => oneShotMode('imgPt2', 'Приблизьте фото слева и кликните точку 2 на снимке.');
+document.getElementById('setMapPt1Btn').onclick = () => oneShotMode('mapPt1', 'Кликните соответствующую точку 1 на карте.');
+document.getElementById('setMapPt2Btn').onclick = () => oneShotMode('mapPt2', 'Кликните соответствующую точку 2 на карте.');
+
+document.getElementById('resetGeorefPointsBtn').onclick = () => {
+  const img = activePhotoImage();
+  if (!img) return setStatus('Сначала загрузите или выберите снимок.');
+  img.imgPt1 = null;
+  img.imgPt2 = null;
+  img.mapPt1 = null;
+  img.mapPt2 = null;
+  img.georef = null;
+  clearMapRefMarkers();
+  rebuildPhotoMarks();
+  renderAll();
+  setStatus('Точки привязки выбранного снимка сброшены.');
+};
+
+function addMapRefMarker(latlng, label) {
+  const m = L.circleMarker(latlng, {
+    radius: 2.5,
+    weight: 1,
+    color: '#000',
+    fillColor: '#e30000',
+    fillOpacity: 1
+  }).addTo(map).bindTooltip(label, { permanent: false });
+  state.mapRefMarkers.push(m);
+}
+
+function clearMapRefMarkers() {
+  state.mapRefMarkers.forEach(m => m.remove());
+  state.mapRefMarkers = [];
+}
+
+function rebuildMapRefMarkersForImage(img) {
+  clearMapRefMarkers();
+  if (!img || state.interfaceMode === 'view') return;
+  if (Array.isArray(img.mapPt1)) addMapRefMarker(L.latLng(img.mapPt1[0], img.mapPt1[1]), 'Карта 1');
+  if (Array.isArray(img.mapPt2)) addMapRefMarker(L.latLng(img.mapPt2[0], img.mapPt2[1]), 'Карта 2');
+}
+
+map.on('click', (ev) => {
+  if (state.mode === 'mapPt1' || state.mode === 'mapPt2') {
+    const d = state.currentImageDraft || activePhotoImage();
+    if (!d) return setStatus('Сначала загрузите изображение.');
+    if (state.mode === 'mapPt1') d.mapPt1 = [ev.latlng.lat, ev.latlng.lng];
+    if (state.mode === 'mapPt2') d.mapPt2 = [ev.latlng.lat, ev.latlng.lng];
+    rebuildMapRefMarkersForImage(d);
+    state.mode = null;
+    els.photoViewport.classList.remove('pointMode');
+    setStatus('Точка на карте задана.');
+    return;
+  }
+  if (state.drawing.type) addDrawingPoint(ev.latlng);
+});
+
+function computeGeoref(d) {
+  const p1 = { x: d.imgPt1.x * d.width, y: d.imgPt1.y * d.height };
+  const p2 = { x: d.imgPt2.x * d.width, y: d.imgPt2.y * d.height };
+  const q1 = map.latLngToLayerPoint(d.mapPt1);
+  const q2 = map.latLngToLayerPoint(d.mapPt2);
+  const v1 = { x: p2.x - p1.x, y: p2.y - p1.y };
+  const v2 = { x: q2.x - q1.x, y: q2.y - q1.y };
+  const len1 = Math.hypot(v1.x, v1.y);
+  const len2 = Math.hypot(v2.x, v2.y);
+  if (len1 < 5 || len2 < 5) throw new Error('Точки слишком близко друг к другу. Выберите точки дальше друг от друга.');
+  const scale = len2 / len1;
+  const angle = Math.atan2(v2.y, v2.x) - Math.atan2(v1.y, v1.x);
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+  const topLeftLayer = {
+    x: q1.x - scale * (p1.x * cos - p1.y * sin),
+    y: q1.y - scale * (p1.x * sin + p1.y * cos)
+  };
+  const topLeftLatLng = map.layerPointToLatLng(topLeftLayer);
+  return {
+    scale,
+    angle,
+    baseZoom: map.getZoom(),
+    topLeftLatLng: [topLeftLatLng.lat, topLeftLatLng.lng]
+  };
+}
+
+document.getElementById('applyGeorefBtn').onclick = () => {
+  const d = state.currentImageDraft || activePhotoImage();
+  if (!d) return setStatus('Нет загруженного изображения.');
+  if (!d.imgPt1 || !d.imgPt2 || !d.mapPt1 || !d.mapPt2) {
+    return setStatus('Нужно задать две точки на фото и две соответствующие точки на карте.');
+  }
+  try {
+    d.georef = computeGeoref(d);
+    const old = state.images.find(x => x.id === d.id);
+    if (old) Object.assign(old, d);
+    else state.images.push(d);
+    state.selectedImageId = d.id;
+    state.currentImageDraft = null;
+    clearMapRefMarkers();
+    setStatus('Привязка применена. Теперь можно нарисовать область для этого снимка.');
+    renderAll();
+  } catch (e) {
+    setStatus('Ошибка привязки: ' + e.message);
+  }
+};
+
+els.overlayOpacityRange.addEventListener('input', () => {
+  const img = activePhotoImage();
+  const opacity = clampOpacity(Number(els.overlayOpacityRange.value) / 100);
+  els.overlayOpacityValue.textContent = Math.round(opacity * 100) + '%';
+  if (img) {
+    img.opacity = opacity;
+    if (img.georef) updateImagePosition(img, Boolean(state.selectedPolygonId));
+    renderLists();
+  }
+});
+
+document.getElementById('saveImageMetaBtn').onclick = () => saveImageMetaFromControls(false);
+els.imageComment.addEventListener('change', () => saveImageMetaFromControls(true));
+els.imageName.addEventListener('change', () => saveImageMetaFromControls(true));
+els.imageUrl.addEventListener('change', () => saveImageMetaFromControls(true));
+els.imageQuality.addEventListener('change', () => saveImageMetaFromControls(true));
+els.imageClouds.addEventListener('change', () => saveImageMetaFromControls(true));
+els.imageSnow.addEventListener('change', () => saveImageMetaFromControls(true));
+els.imageDateEnabled.addEventListener('change', () => {
+  els.imageDateMonth.disabled = !els.imageDateEnabled.checked;
+  saveImageMetaFromControls(true);
+});
+els.imageDateMonth.addEventListener('change', () => saveImageMetaFromControls(true));
+
+function geoImageElement(img) {
+  const el = document.createElement('img');
+  el.className = 'geo-image';
+  el.src = imageSource(img);
+  el.dataset.imageId = img.id;
+  el.style.width = img.width + 'px';
+  el.style.height = img.height + 'px';
+  el.style.opacity = String(clampOpacity(img.opacity));
+  el.style.display = 'none';
+  map.getPanes().overlayPane.appendChild(el);
+  return el;
+}
+
+function updateImagePosition(img, onlySelected = false) {
+  if (!img.georef) return;
+  const src = imageSource(img);
+  if (!src) {
+    const oldEl = imageEls.get(img.id);
+    if (oldEl) oldEl.style.display = 'none';
+    return;
+  }
+  let el = imageEls.get(img.id);
+  if (!el) {
+    el = geoImageElement(img);
+    imageEls.set(img.id, el);
+  }
+  el.src = src;
+  el.style.width = img.width + 'px';
+  el.style.height = img.height + 'px';
+  el.style.opacity = String(clampOpacity(img.opacity));
+  const p = map.latLngToLayerPoint(img.georef.topLeftLatLng);
+  const baseZoom = typeof img.georef.baseZoom === 'number' ? img.georef.baseZoom : map.getZoom();
+  const zoomScale = map.getZoomScale(map.getZoom(), baseZoom);
+  const finalScale = img.georef.scale * zoomScale;
+  const visible = !onlySelected || img.id === state.selectedImageId;
+  el.style.display = visible ? 'block' : 'none';
+  el.style.transform = `translate(${p.x}px, ${p.y}px) rotate(${img.georef.angle}rad) scale(${finalScale})`;
+}
+
+function renderImages(onlySelected = false) {
+  for (const [id, el] of imageEls) {
+    if (!state.images.find(i => i.id === id)) {
+      el.remove();
+      imageEls.delete(id);
+    }
+  }
+  state.images.forEach(img => updateImagePosition(img, onlySelected));
+}
+
+map.on('zoom move viewreset', () => renderImages(Boolean(state.selectedPolygonId)));
+
+function addDrawingPoint(latlng) {
+  const d = state.drawing;
+  d.points.push([latlng.lat, latlng.lng]);
+  const marker = L.circleMarker(latlng, {
+    radius: 3,
+    weight: 1,
+    color: '#111',
+    fillColor: '#ffffff',
+    fillOpacity: 1
+  }).addTo(map);
+  d.markers.push(marker);
+  if (d.line) d.line.remove();
+  d.line = L.polyline(d.points, { weight: 2 }).addTo(map);
+}
+
+function startDrawing(type) {
+  if (type === 'area' && state.interfaceMode === 'view') return setStatus('Области снимков создаются только в режиме редактора.');
+  cancelDrawing(false);
+  state.drawing.type = type;
+  setStatus(type === 'area'
+    ? 'Кликайте по карте, чтобы задать область снимка. Затем нажмите «Сохранить».'
+    : 'Кликайте по карте, чтобы задать проверочный многоугольник. Затем нажмите «Проверить».'
+  );
+}
+
+function cancelDrawing(showText = true) {
+  const d = state.drawing;
+  d.markers.forEach(m => m.remove());
+  if (d.line) d.line.remove();
+  state.drawing = { type: null, points: [], markers: [], line: null };
+  if (showText) setStatus('Рисование отменено.');
+}
+
+document.getElementById('drawPolygonBtn').onclick = () => {
+  if (!state.selectedImageId && els.imageSelect.value) state.selectedImageId = els.imageSelect.value;
+  if (!state.selectedImageId) return setStatus('Сначала выберите привязанный снимок.');
+  startDrawing('area');
+};
+
+document.getElementById('finishPolygonBtn').onclick = () => {
+  const d = state.drawing;
+  if (d.type !== 'area' || d.points.length < 3) return setStatus('Для области нужно минимум 3 точки.');
+  const img = state.images.find(x => x.id === state.selectedImageId);
+  const imageAreaIndex = state.polygons.filter(p => p.imageId === state.selectedImageId).length + 1;
+  const userName = (els.polygonName.value || '').trim();
+  const isFree = Boolean(els.createFreeAreaCheck.checked);
+  state.polygons.push({
+    id: uid('poly'),
+    imageId: state.selectedImageId,
+    points: d.points,
+    name: userName || ((img ? img.name : 'Снимок') + ' · область ' + imageAreaIndex),
+    free: isFree
+  });
+  els.polygonName.value = '';
+  cancelDrawing(false);
+  setStatus(isFree ? 'Область сохранена и помечена как бесплатная.' : 'Область сохранена.');
+  renderAll();
+};
+
+document.getElementById('drawQueryBtn').onclick = () => startDrawing('query');
+
+document.getElementById('finishQueryBtn').onclick = async () => {
+  const d = state.drawing;
+  if (d.type !== 'query' || d.points.length < 3) return setStatus('Для проверки нужно минимум 3 точки.');
+  state.queryPolygon = d.points.slice();
+  cancelDrawing(false);
+  if (state.dataSourceMode === 'remote') {
+    await loadRemoteTilesForPolygon(state.queryPolygon);
+  }
+  runIntersectionSearch();
+};
+
+document.getElementById('cancelDrawingBtn').onclick = () => cancelDrawing(true);
+document.getElementById('clearQueryBtn').onclick = () => {
+  state.queryPolygon = null;
+  state.results = [];
+  state.selectedPolygonId = null;
+  renderAll();
+  setStatus('Проверка очищена.');
+};
+
+els.showSavedPolygonsCheck.addEventListener('change', () => {
+  state.showSavedPolygons = els.showSavedPolygonsCheck.checked;
+  state.selectedPolygonId = null;
+  renderAll();
+  setStatus(state.showSavedPolygons
+    ? 'Сохранённые области снова отображаются постоянно.'
+    : 'Сохранённые области скрыты. Они появятся после пересечения с проверочной областью или при выборе из списка.');
+});
+
+els.filterFreeCheck.addEventListener('change', () => {
+  filtersChanged();
+  setStatus(state.filterFreeOnly
+    ? 'Фильтр включён: при проверке отображаются только бесплатные области.'
+    : 'Фильтр выключен: при проверке отображаются все пересекающиеся области.');
+});
+[els.filterQuality, els.filterScaleTag, els.filterDateFrom, els.filterDateTo, els.filterIncludeUndated, els.filterClouds, els.filterSnow].forEach(el => {
+  el.addEventListener('change', () => {
+    filtersChanged();
+    setStatus('Фильтры по снимкам обновлены.');
+  });
+});
+els.resetFiltersBtn.addEventListener('click', () => {
+  state.filterFreeOnly = false;
+  state.filters = { quality: 'any', scaleTag: 'any', dateFrom: '', dateTo: '', includeUndated: true, clouds: 'any', snow: 'any' };
+  syncFilterControls();
+  if (state.queryPolygon) runIntersectionSearch();
+  else renderAll();
+  setStatus('Фильтры сброшены.');
+});
+
+function closedRing(points) {
+  const ring = points.map(p => [p[1], p[0]]);
+  const a = ring[0];
+  const b = ring[ring.length - 1];
+  if (a[0] !== b[0] || a[1] !== b[1]) ring.push(a);
+  return ring;
+}
+
+function intersects(aPts, bPts) {
+  try {
+    const a = turf.polygon([closedRing(aPts)]);
+    const b = turf.polygon([closedRing(bPts)]);
+    return turf.booleanIntersects(a, b);
+  } catch (e) {
+    return false;
+  }
+}
+
+function runIntersectionSearch() {
+  readFiltersFromControls();
+  state.results = state.polygons
+    .filter(matchesFilters)
+    .filter(p => intersects(state.queryPolygon, p.points))
+    .map(p => p.id);
+  state.selectedPolygonId = null;
+  setStatus('Найдено пересечений: ' + state.results.length + (state.filterFreeOnly ? ' среди бесплатных областей.' : '.'));
+  renderAll();
+}
+
+function selectPolygon(id) {
+  state.selectedPolygonId = id;
+  const p = state.polygons.find(x => x.id === id);
+  state.selectedImageId = p ? p.imageId : null;
+  const img = state.images.find(x => x.id === state.selectedImageId);
+  if (img) showPhotoImage(img, true);
+  renderAll(true);
+  if (p) map.fitBounds(L.latLngBounds(p.points), { padding: [30, 30] });
+}
+
+document.getElementById('showAllBtn').onclick = () => {
+  state.selectedPolygonId = null;
+  state.showSavedPolygons = true;
+  if (els.showSavedPolygonsCheck) els.showSavedPolygonsCheck.checked = true;
+  renderAll(false);
+  const img = state.images.find(x => x.id === state.selectedImageId);
+  if (img) showPhotoImage(img, true);
+};
+
+document.getElementById('deleteSelectedBtn').onclick = () => {
+  if (!state.selectedPolygonId) return setStatus('Не выбрана область для удаления.');
+  state.polygons = state.polygons.filter(p => p.id !== state.selectedPolygonId);
+  state.results = state.results.filter(id => id !== state.selectedPolygonId);
+  state.selectedPolygonId = null;
+  setStatus('Выбранная область удалена.');
+  renderAll();
+};
+
+function visiblePolygonsForCurrentMode(onlySelected = false) {
+  if (onlySelected && state.selectedPolygonId) return state.polygons.filter(p => p.id === state.selectedPolygonId);
+  if (state.showSavedPolygons && state.interfaceMode === 'edit') return state.polygons;
+  if (state.results.length) {
+    const resultSet = new Set(state.results);
+    return state.polygons.filter(p => resultSet.has(p.id));
+  }
+  return [];
+}
+
+function renderPolygons(onlySelected = false) {
+  polygonLayers.forEach(l => l.remove());
+  polygonLayers.clear();
+  const visiblePolys = visiblePolygonsForCurrentMode(onlySelected);
+  visiblePolys.forEach(p => {
+    const isResult = state.results.includes(p.id);
+    const isSelected = state.selectedPolygonId === p.id;
+    const layer = L.polygon(p.points, {
+      color: isSelected ? '#000000' : Boolean(p.free) ? '#087443' : isResult ? '#d00000' : '#1c5fb8',
+      weight: isSelected ? 3 : 2,
+      fillOpacity: onlySelected ? 0 : Boolean(p.free) ? 0.13 : 0.10
+    }).addTo(map).on('click', () => selectPolygon(p.id));
+    polygonLayers.set(p.id, layer);
+  });
+  if (queryLayer) {
+    queryLayer.remove();
+    queryLayer = null;
+  }
+  if (state.queryPolygon) {
+    queryLayer = L.polygon(state.queryPolygon, { color: '#008000', weight: 2, fillOpacity: 0.08 }).addTo(map);
+  }
+}
+
+function renderLists() {
+  els.imageSelect.innerHTML = '';
+  if (!state.images.length) {
+    const opt = document.createElement('option');
+    opt.value = '';
+    opt.textContent = 'нет привязанных снимков';
+    els.imageSelect.appendChild(opt);
+  }
+  state.images.forEach(img => {
+    const opt = document.createElement('option');
+    opt.value = img.id;
+    opt.textContent = img.name;
+    if (img.id === state.selectedImageId) opt.selected = true;
+    els.imageSelect.appendChild(opt);
+  });
+  els.imageSelect.onchange = () => {
+    state.selectedImageId = els.imageSelect.value;
+    state.currentImageDraft = null;
+    const img = state.images.find(x => x.id === state.selectedImageId);
+    if (img) showPhotoImage(img, false);
+    renderAll();
+  };
+
+  if (els.showSavedPolygonsCheck) els.showSavedPolygonsCheck.checked = Boolean(state.showSavedPolygons);
+  if (els.filterFreeCheck) els.filterFreeCheck.checked = Boolean(state.filterFreeOnly);
+  els.selectedFileComment.textContent = selectedCommentText();
+
+  els.results.innerHTML = '';
+  let resultIds;
+  if (state.results.length) {
+    resultIds = state.results;
+  } else if (state.interfaceMode === 'edit') {
+    resultIds = state.polygons.map(p => p.id);
+  } else {
+    resultIds = [];
+  }
+  if (!resultIds.length) {
+    els.results.innerHTML = '<div class="hint">Пока нет найденных областей. Нарисуйте проверочный многоугольник и нажмите «Проверить».</div>';
+  }
+  resultIds.forEach(id => {
+    const p = state.polygons.find(x => x.id === id);
+    if (!p) return;
+    const img = state.images.find(x => x.id === p.imageId);
+    const div = document.createElement('div');
+    div.className = 'item' + (state.selectedPolygonId === id ? ' active' : '') + (p.free ? ' freeItem' : '');
+    const commentShort = img && img.comment ? `<br>Комментарий: ${escapeHtml(shortText(img.comment))}` : '';
+    const freeBadge = p.free ? '<span class="badge freeBadge">бесплатная</span>' : '';
+    const metaBadges = img ? '<br>' + imageBadgesHtml(img) : '';
+    div.innerHTML = `<b>${escapeHtml(p.name)}</b>${freeBadge}${metaBadges}<br><span class="small">Файл: ${escapeHtml(img ? img.name : 'нет файла')}<br>Изображение: ${img && imageHasDisplaySource(img) ? 'доступно' : 'не встроено'}<br>Точек: ${p.points.length}${commentShort}</span>`;
+    div.onclick = () => selectPolygon(id);
+    els.results.appendChild(div);
+  });
+
+  els.imagesList.innerHTML = '';
+  if (!state.images.length) {
+    els.imagesList.innerHTML = '<div class="hint">Снимки ещё не добавлены.</div>';
+  }
+  state.images.forEach(img => {
+    const div = document.createElement('div');
+    div.className = 'item' + (state.selectedImageId === img.id ? ' active' : '');
+    const imgPolys = state.polygons.filter(p => p.imageId === img.id);
+    const freeCount = imgPolys.filter(p => p.free).length;
+    const commentShort = img.comment ? `<br>Комментарий: ${escapeHtml(shortText(img.comment))}` : '';
+    div.innerHTML = `<b>${escapeHtml(img.name)}</b><br>${imageBadgesHtml(img)}<br><span class="small">${img.width || '?'}×${img.height || '?'}; областей: ${imgPolys.length}; бесплатных: ${freeCount}; прозрачность: ${Math.round(clampOpacity(img.opacity) * 100)}%; изображение: ${imageHasDisplaySource(img) ? 'доступно' : 'не встроено'}${commentShort}</span>`;
+    div.onclick = () => {
+      state.selectedImageId = img.id;
+      state.currentImageDraft = null;
+      showPhotoImage(img, false);
+      renderAll();
+    };
+    els.imagesList.appendChild(div);
+  });
+}
+
+
+function latLngToImagePixel(latLng, img) {
+  if (!img || !img.georef || !img.georef.topLeftLatLng) return null;
+  const pt = Array.isArray(latLng) ? L.latLng(Number(latLng[0]), Number(latLng[1])) : L.latLng(latLng);
+  if (!Number.isFinite(pt.lat) || !Number.isFinite(pt.lng)) return null;
+
+  const baseZoom = typeof img.georef.baseZoom === 'number' ? img.georef.baseZoom : map.getZoom();
+  const savedZoom = map.getZoom();
+  const top = map.project(L.latLng(img.georef.topLeftLatLng[0], img.georef.topLeftLatLng[1]), baseZoom);
+  const cur = map.project(pt, baseZoom);
+  const scale = Number(img.georef.scale);
+  if (!Number.isFinite(scale) || Math.abs(scale) < 1e-9) return null;
+
+  const dx = cur.x - top.x;
+  const dy = cur.y - top.y;
+  const a = Number(img.georef.angle || 0);
+  const cos = Math.cos(a);
+  const sin = Math.sin(a);
+  return {
+    x: (dx * cos + dy * sin) / scale,
+    y: (-dx * sin + dy * cos) / scale
+  };
+}
+
+function clampMiniScale(v) {
+  return Math.max(0.02, Math.min(40, Number(v) || 1));
+}
+
+function applyMiniTransform() {
+  if (!els.selectedMiniLayer) return;
+  miniView.scale = clampMiniScale(miniView.scale);
+  els.selectedMiniLayer.style.transform = `translate(${miniView.offsetX}px, ${miniView.offsetY}px) scale(${miniView.scale})`;
+}
+
+function fitMiniToImage() {
+  if (!els.selectedMiniViewport || !miniView.imageWidth || !miniView.imageHeight) return;
+  const rect = els.selectedMiniViewport.getBoundingClientRect();
+  const scale = Math.min(rect.width / miniView.imageWidth, rect.height / miniView.imageHeight) * 0.96;
+  miniView.scale = clampMiniScale(scale);
+  miniView.offsetX = (rect.width - miniView.imageWidth * miniView.scale) / 2;
+  miniView.offsetY = (rect.height - miniView.imageHeight * miniView.scale) / 2;
+  applyMiniTransform();
+}
+
+function fitMiniToPolygon() {
+  if (!els.selectedMiniViewport || !miniView.polygonPts.length) return fitMiniToImage();
+  const rect = els.selectedMiniViewport.getBoundingClientRect();
+  const xs = miniView.polygonPts.map(p => p.x).filter(Number.isFinite);
+  const ys = miniView.polygonPts.map(p => p.y).filter(Number.isFinite);
+  if (!xs.length || !ys.length) return fitMiniToImage();
+  let minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
+  const bw = Math.max(1, maxX - minX);
+  const bh = Math.max(1, maxY - minY);
+  const margin = Math.max(40, Math.max(bw, bh) * 0.45);
+  minX = Math.max(0, minX - margin);
+  minY = Math.max(0, minY - margin);
+  maxX = Math.min(miniView.imageWidth || maxX, maxX + margin);
+  maxY = Math.min(miniView.imageHeight || maxY, maxY + margin);
+  const boxW = Math.max(1, maxX - minX);
+  const boxH = Math.max(1, maxY - minY);
+  miniView.scale = clampMiniScale(Math.min(rect.width / boxW, rect.height / boxH) * 0.88);
+  miniView.offsetX = (rect.width - boxW * miniView.scale) / 2 - minX * miniView.scale;
+  miniView.offsetY = (rect.height - boxH * miniView.scale) / 2 - minY * miniView.scale;
+  applyMiniTransform();
+}
+
+function zoomMiniAt(clientX, clientY, factor) {
+  if (!els.selectedMiniViewport || !miniView.imageWidth) return;
+  const rect = els.selectedMiniViewport.getBoundingClientRect();
+  const x = clientX - rect.left;
+  const y = clientY - rect.top;
+  const imgX = (x - miniView.offsetX) / miniView.scale;
+  const imgY = (y - miniView.offsetY) / miniView.scale;
+  const nextScale = clampMiniScale(miniView.scale * factor);
+  miniView.offsetX = x - imgX * nextScale;
+  miniView.offsetY = y - imgY * nextScale;
+  miniView.scale = nextScale;
+  applyMiniTransform();
+}
+
+function clearMiniPreview(text = 'Выберите найденную область, чтобы увидеть её на снимке.') {
+  if (!els.selectedMiniPhoto || !els.selectedMiniSvg || !els.selectedMiniText) return;
+  els.selectedMiniSvg.innerHTML = '';
+  els.selectedMiniPhoto.style.display = 'none';
+  els.selectedMiniPhoto.removeAttribute('src');
+  els.selectedMiniText.textContent = text;
+  miniView.imageWidth = 0;
+  miniView.imageHeight = 0;
+  miniView.polygonPts = [];
+  miniView.currentKey = '';
+  miniView.autoFitKey = '';
+  applyMiniTransform();
+}
+
+function updateMiniPreview() {
+  if (!els.selectedMiniPhoto || !els.selectedMiniSvg || !els.selectedMiniText || !els.selectedMiniLayer) return;
+  const p = state.selectedPolygonId ? state.polygons.find(x => x.id === state.selectedPolygonId) : null;
+  const img = p ? state.images.find(x => x.id === p.imageId) : null;
+  if (!p || !img) {
+    clearMiniPreview();
+    return;
+  }
+  const src = imageSource(img);
+  if (!src) {
+    clearMiniPreview('Фото не загружено. Для GitHub укажите imageUrl, для локального проекта выберите папку с фото.');
+    return;
+  }
+
+  const queryKey = state.queryPolygon ? JSON.stringify(state.queryPolygon) : '';
+  const key = `${p.id}|${img.id}|${src}|${queryKey}`;
+  const draw = () => {
+    const w = Number(img.width) || els.selectedMiniPhoto.naturalWidth;
+    const h = Number(img.height) || els.selectedMiniPhoto.naturalHeight;
+    if (!w || !h) return;
+    miniView.imageWidth = w;
+    miniView.imageHeight = h;
+
+    els.selectedMiniLayer.style.width = w + 'px';
+    els.selectedMiniLayer.style.height = h + 'px';
+    els.selectedMiniPhoto.style.display = 'block';
+    els.selectedMiniPhoto.style.width = w + 'px';
+    els.selectedMiniPhoto.style.height = h + 'px';
+    els.selectedMiniSvg.setAttribute('width', String(w));
+    els.selectedMiniSvg.setAttribute('height', String(h));
+    els.selectedMiniSvg.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+    els.selectedMiniSvg.style.width = w + 'px';
+    els.selectedMiniSvg.style.height = h + 'px';
+
+    const selectedPts = (p.points || [])
+      .map(pt => latLngToImagePixel(pt, img))
+      .filter(pt => pt && Number.isFinite(pt.x) && Number.isFinite(pt.y));
+    const queryPts = (state.queryPolygon || [])
+      .map(pt => latLngToImagePixel(pt, img))
+      .filter(pt => pt && Number.isFinite(pt.x) && Number.isFinite(pt.y));
+
+    miniView.polygonPts = selectedPts.length >= 3 ? selectedPts : queryPts;
+    els.selectedMiniSvg.innerHTML = '';
+
+    const strokeW = Math.max(4, Math.min(w, h) / 180);
+    const pointR = Math.max(5, Math.min(w, h) / 260);
+
+    const drawPolygonOnMini = (pts, options) => {
+      if (!pts || pts.length < 3) return false;
+      const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+      poly.setAttribute('points', pts.map(pt => pt.x + ',' + pt.y).join(' '));
+      poly.setAttribute('fill', options.fill);
+      poly.setAttribute('stroke', options.stroke);
+      poly.setAttribute('stroke-linejoin', 'round');
+      poly.setAttribute('stroke-width', strokeW);
+      if (options.dash) poly.setAttribute('stroke-dasharray', options.dash);
+      els.selectedMiniSvg.appendChild(poly);
+      if (options.points) {
+        pts.forEach(pt => {
+          const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+          c.setAttribute('cx', pt.x);
+          c.setAttribute('cy', pt.y);
+          c.setAttribute('r', pointR);
+          c.setAttribute('fill', '#ffffff');
+          c.setAttribute('stroke', options.stroke);
+          c.setAttribute('stroke-width', Math.max(2, Math.min(w, h) / 600));
+          els.selectedMiniSvg.appendChild(c);
+        });
+      }
+      return true;
+    };
+
+    const hasSelected = drawPolygonOnMini(selectedPts, {
+      fill: 'rgba(220,38,38,0.22)',
+      stroke: '#dc2626',
+      points: true
+    });
+    const hasQuery = drawPolygonOnMini(queryPts, {
+      fill: 'rgba(22,163,74,0.14)',
+      stroke: '#16a34a',
+      dash: String(Math.max(10, strokeW * 2)) + ' ' + String(Math.max(8, strokeW * 1.4)),
+      points: false
+    });
+
+    if (hasSelected || hasQuery) {
+      const parts = [];
+      if (hasSelected) parts.push('красным — сохранённая область');
+      if (hasQuery) parts.push('зелёным — проверочная область');
+      els.selectedMiniText.textContent = (img.name || 'Выбранный снимок') + ' · ' + parts.join(', ');
+    } else {
+      els.selectedMiniText.textContent = (img.name || 'Выбранный снимок') + ' · области не удалось пересчитать в координаты снимка. Проверьте точки привязки.';
+    }
+
+    if (miniView.currentKey !== key || miniView.autoFitKey !== key) {
+      miniView.currentKey = key;
+      miniView.autoFitKey = key;
+      if (miniView.polygonPts.length >= 3) fitMiniToPolygon();
+      else fitMiniToImage();
+    } else {
+      applyMiniTransform();
+    }
+  };
+
+  if (els.selectedMiniPhoto.src !== src) {
+    els.selectedMiniPhoto.onload = draw;
+    els.selectedMiniPhoto.src = src;
+  } else if (els.selectedMiniPhoto.complete) {
+    draw();
+  } else {
+    els.selectedMiniPhoto.onload = draw;
+  }
+}
+
+
+function renderAll(onlySelected = false) {
+  renderImages(onlySelected && Boolean(state.selectedImageId));
+  renderPolygons(onlySelected);
+  renderLists();
+  updateMiniPreview();
+}
+
+
+if (els.miniZoomOutBtn) els.miniZoomOutBtn.onclick = () => zoomMiniAt(
+  els.selectedMiniViewport.getBoundingClientRect().left + els.selectedMiniViewport.clientWidth / 2,
+  els.selectedMiniViewport.getBoundingClientRect().top + els.selectedMiniViewport.clientHeight / 2,
+  1 / 1.25
+);
+if (els.miniZoomInBtn) els.miniZoomInBtn.onclick = () => zoomMiniAt(
+  els.selectedMiniViewport.getBoundingClientRect().left + els.selectedMiniViewport.clientWidth / 2,
+  els.selectedMiniViewport.getBoundingClientRect().top + els.selectedMiniViewport.clientHeight / 2,
+  1.25
+);
+if (els.miniFitBtn) els.miniFitBtn.onclick = fitMiniToImage;
+if (els.miniAreaFitBtn) els.miniAreaFitBtn.onclick = fitMiniToPolygon;
+
+if (els.selectedMiniViewport) {
+  els.selectedMiniViewport.addEventListener('wheel', ev => {
+    ev.preventDefault();
+    zoomMiniAt(ev.clientX, ev.clientY, ev.deltaY < 0 ? 1.18 : 1 / 1.18);
+  }, { passive: false });
+
+  els.selectedMiniViewport.addEventListener('mousedown', ev => {
+    if (!miniView.imageWidth) return;
+    miniView.dragging = true;
+    miniView.dragStartX = ev.clientX;
+    miniView.dragStartY = ev.clientY;
+    miniView.dragOffsetX = miniView.offsetX;
+    miniView.dragOffsetY = miniView.offsetY;
+    els.selectedMiniViewport.style.cursor = 'grabbing';
+  });
+
+  window.addEventListener('mousemove', ev => {
+    if (!miniView.dragging) return;
+    miniView.offsetX = miniView.dragOffsetX + (ev.clientX - miniView.dragStartX);
+    miniView.offsetY = miniView.dragOffsetY + (ev.clientY - miniView.dragStartY);
+    applyMiniTransform();
+  });
+
+  window.addEventListener('mouseup', () => {
+    if (!miniView.dragging) return;
+    miniView.dragging = false;
+    els.selectedMiniViewport.style.cursor = 'grab';
+  });
+}
+
+
+function openTrainingModal() {
+  if (!els.trainingModal) return;
+  els.trainingModal.classList.add('open');
+  els.trainingModal.setAttribute('aria-hidden', 'false');
+}
+
+function closeTrainingModal() {
+  if (!els.trainingModal) return;
+  els.trainingModal.classList.remove('open');
+  els.trainingModal.setAttribute('aria-hidden', 'true');
+}
+
+if (els.trainingBtn) els.trainingBtn.onclick = openTrainingModal;
+if (els.closeTrainingBtn) els.closeTrainingBtn.onclick = closeTrainingModal;
+if (els.trainingModal) {
+  els.trainingModal.addEventListener('click', ev => {
+    if (ev.target === els.trainingModal) closeTrainingModal();
+  });
+}
+window.addEventListener('keydown', ev => {
+  if (ev.key === 'Escape') closeTrainingModal();
+});
+
+function exportProject() {
+  const project = {
+    version: 17,
+    createdAt: new Date().toISOString(),
+    storage: { embeddedOverlayImages: false },
+    dataSourceMode: state.dataSourceMode,
+    mapBaseLayer: state.mapBaseLayer,
+    showSavedPolygons: state.showSavedPolygons,
+    filterFreeOnly: state.filterFreeOnly,
+    filters: state.filters,
+    images: state.images.map(stripEmbeddedImageData),
+    polygons: state.polygons
+  };
+  const blob = new Blob([JSON.stringify(project, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'aero_overlay_project.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+document.getElementById('saveProjectBtn').onclick = exportProject;
+
+document.getElementById('newProjectBtn').onclick = () => {
+  if (state.dataSourceMode === 'remote') setDataSourceMode('local');
+  if (!confirm('Очистить текущий проект?')) return;
+  state.localImages = [];
+  state.localPolygons = [];
+  state.queryPolygon = null;
+  state.results = [];
+  state.selectedPolygonId = null;
+  state.selectedImageId = null;
+  state.currentImageDraft = null;
+  state.mapBaseLayer = 'street';
+  state.showSavedPolygons = true;
+  state.filterFreeOnly = false;
+  state.filters = { quality: 'any', scaleTag: 'any', dateFrom: '', dateTo: '', includeUndated: true, clouds: 'any', snow: 'any' };
+  els.showSavedPolygonsCheck.checked = true;
+  syncFilterControls();
+  setBaseLayer('street');
+  clearMapRefMarkers();
+  showPhotoImage(null);
+  renderAll();
+  setStatus('Создан новый пустой проект.');
+};
+
+document.getElementById('loadProjectInput').addEventListener('change', async (ev) => {
+  const file = ev.target.files[0];
+  if (!file) return;
+  const text = await file.text();
+  try {
+    const project = JSON.parse(text);
+    if (!Array.isArray(project.images) || !Array.isArray(project.polygons)) throw new Error('Неверный формат проекта.');
+    if (state.dataSourceMode !== 'local') setDataSourceMode('local');
+    state.localImages = project.images.map((img, idx) => normalizeProjectImage(img, idx));
+    state.localPolygons = project.polygons.map((poly, idx) => ({
+      ...poly,
+      free: Boolean(poly.free),
+      name: poly.name || ('Область ' + (idx + 1))
+    }));
+    state.queryPolygon = null;
+    state.results = [];
+    state.selectedPolygonId = null;
+    state.selectedImageId = state.images[0]?.id || null;
+    state.currentImageDraft = null;
+    state.mapBaseLayer = project.mapBaseLayer === 'satellite' ? 'satellite' : 'street';
+    state.showSavedPolygons = typeof project.showSavedPolygons === 'boolean' ? project.showSavedPolygons : true;
+    state.filterFreeOnly = typeof project.filterFreeOnly === 'boolean' ? project.filterFreeOnly : false;
+    state.filters = {
+      quality: project.filters?.quality || 'any',
+      scaleTag: project.filters?.scaleTag || 'any',
+      dateFrom: normalizeMonthValue(project.filters?.dateFrom),
+      dateTo: normalizeMonthValue(project.filters?.dateTo),
+      includeUndated: project.filters?.includeUndated !== false,
+      clouds: project.filters?.clouds || 'any',
+      snow: project.filters?.snow || 'any'
+    };
+    els.showSavedPolygonsCheck.checked = state.showSavedPolygons;
+    syncFilterControls();
+    setBaseLayer(state.mapBaseLayer);
+    clearMapRefMarkers();
+    const img = state.images.find(x => x.id === state.selectedImageId);
+    showPhotoImage(img || null, false);
+    renderAll();
+    setStatus('Проект загружен.');
+  } catch (e) {
+    setStatus('Ошибка загрузки проекта: ' + e.message);
+  }
+});
+
+syncFilterControls();
+setInterfaceMode('view');
+renderAll();
+setStatus('Готово. Сначала открыт режим просмотра. JSON теперь сохраняет привязки и метаданные без встроенных overlay-фото.');
+</script>
+</body>
+</html>

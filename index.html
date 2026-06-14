@@ -1324,17 +1324,12 @@ function remoteTileAssetUrl(path) {
   return REMOTE_TILES_DIR + '/' + normalized;
 }
 
-function looksLikeImageFileName(value) {
-  return /\.(jpg|jpeg|png|webp|gif|tif|tiff|bmp)$/i.test(String(value || '').trim());
-}
-
 function resolveRemoteImageUrl(img, tile, tileUrl) {
   if (!img) return '';
   const raw = String(
     img.imageFileName ||
     img.tileFileName ||
     img.photoFileName ||
-    (looksLikeImageFileName(img.name) ? img.name : '') ||
     img.fileName ||
     img.imageUrl ||
     img.url ||
@@ -1500,7 +1495,6 @@ function fileKeyCandidates(img) {
     img.imageFileName,
     img.tileFileName,
     img.photoFileName,
-    looksLikeImageFileName(img.name) ? img.name : '',
     img.fileName,
     img.sourceFileName,
     img.originalFileName,
@@ -2489,10 +2483,30 @@ function clampMiniScale(v) {
   return Math.max(0.02, Math.min(40, Number(v) || 1));
 }
 
+function updateMiniOverlayStyles() {
+  if (!els.selectedMiniSvg) return;
+  const s = Math.max(0.02, Number(miniView.scale) || 1);
+  els.selectedMiniSvg.querySelectorAll('[data-mini-poly=\"selected\"]').forEach(el => {
+    el.setAttribute('stroke-width', '1.25');
+    el.setAttribute('vector-effect', 'non-scaling-stroke');
+  });
+  els.selectedMiniSvg.querySelectorAll('[data-mini-poly=\"query\"]').forEach(el => {
+    el.setAttribute('stroke-width', '1.05');
+    el.setAttribute('stroke-dasharray', '5 4');
+    el.setAttribute('vector-effect', 'non-scaling-stroke');
+  });
+  els.selectedMiniSvg.querySelectorAll('[data-mini-point=\"1\"]').forEach(el => {
+    el.setAttribute('r', String(Math.max(0.7, Math.min(2.0, 1.6 / s))));
+    el.setAttribute('stroke-width', '0.7');
+    el.setAttribute('vector-effect', 'non-scaling-stroke');
+  });
+}
+
 function applyMiniTransform() {
   if (!els.selectedMiniLayer) return;
   miniView.scale = clampMiniScale(miniView.scale);
   els.selectedMiniLayer.style.transform = `translate(${miniView.offsetX}px, ${miniView.offsetY}px) scale(${miniView.scale})`;
+  updateMiniOverlayStyles();
 }
 
 function fitMiniToImage() {
@@ -2599,9 +2613,6 @@ function updateMiniPreview() {
     miniView.polygonPts = selectedPts.length >= 3 ? selectedPts : queryPts;
     els.selectedMiniSvg.innerHTML = '';
 
-    const strokeW = Math.max(4, Math.min(w, h) / 180);
-    const pointR = Math.max(5, Math.min(w, h) / 260);
-
     const drawPolygonOnMini = (pts, options) => {
       if (!pts || pts.length < 3) return false;
       const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
@@ -2609,7 +2620,9 @@ function updateMiniPreview() {
       poly.setAttribute('fill', options.fill);
       poly.setAttribute('stroke', options.stroke);
       poly.setAttribute('stroke-linejoin', 'round');
-      poly.setAttribute('stroke-width', strokeW);
+      poly.setAttribute('stroke-linecap', 'round');
+      poly.setAttribute('shape-rendering', 'geometricPrecision');
+      poly.setAttribute('data-mini-poly', options.kind || 'selected');
       if (options.dash) poly.setAttribute('stroke-dasharray', options.dash);
       els.selectedMiniSvg.appendChild(poly);
       if (options.points) {
@@ -2617,10 +2630,9 @@ function updateMiniPreview() {
           const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
           c.setAttribute('cx', pt.x);
           c.setAttribute('cy', pt.y);
-          c.setAttribute('r', pointR);
-          c.setAttribute('fill', '#ffffff');
+          c.setAttribute('data-mini-point', '1');
+          c.setAttribute('fill', 'rgba(255,255,255,0.45)');
           c.setAttribute('stroke', options.stroke);
-          c.setAttribute('stroke-width', Math.max(2, Math.min(w, h) / 600));
           els.selectedMiniSvg.appendChild(c);
         });
       }
@@ -2628,16 +2640,19 @@ function updateMiniPreview() {
     };
 
     const hasSelected = drawPolygonOnMini(selectedPts, {
-      fill: 'rgba(220,38,38,0.22)',
+      kind: 'selected',
+      fill: 'rgba(220,38,38,0.08)',
       stroke: '#dc2626',
       points: true
     });
     const hasQuery = drawPolygonOnMini(queryPts, {
-      fill: 'rgba(22,163,74,0.14)',
+      kind: 'query',
+      fill: 'rgba(22,163,74,0.05)',
       stroke: '#16a34a',
-      dash: String(Math.max(10, strokeW * 2)) + ' ' + String(Math.max(8, strokeW * 1.4)),
+      dash: '5 4',
       points: false
     });
+    updateMiniOverlayStyles();
 
     if (hasSelected || hasQuery) {
       const parts = [];
@@ -2723,7 +2738,7 @@ if (els.selectedMiniViewport) {
 
 function exportProject() {
   const project = {
-    version: 22,
+    version: 21,
     createdAt: new Date().toISOString(),
     storage: { embeddedOverlayImages: false },
     dataSourceMode: state.dataSourceMode,

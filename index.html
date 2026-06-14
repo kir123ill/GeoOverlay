@@ -1943,7 +1943,7 @@ window.addEventListener('resize', () => { map.invalidateSize(); updatePhotoTrans
 
 function registerPhotoFile(file) {
   if (!file || !file.type || !file.type.startsWith('image/')) return;
-  const rel = String(file.webkitRelativePath || file.name).replace(/\/g, '/');
+  const rel = String(file.webkitRelativePath || file.name).replace(/\\/g, '/');
   const name = file.name;
   const candidates = [...new Set([rel, name, rel.split('/').slice(1).join('/'), rel.split('/').pop()].filter(Boolean))];
   let objectUrl = '';

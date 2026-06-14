@@ -318,7 +318,7 @@
     body.view-mode .miniPhotoBox {
       height: calc(100vh - 385px);
       min-height: 440px;
-      max-height: 680px;
+      max-height: 720px;
     }
 
     #selectedMiniLayer {
@@ -364,71 +364,6 @@
       pointer-events: none;
     }
 
-
-
-    .helpButton {
-      font-weight: 700;
-      min-width: 36px;
-      padding-left: 10px;
-      padding-right: 10px;
-    }
-
-    .modalBackdrop {
-      position: fixed;
-      inset: 0;
-      z-index: 5000;
-      background: rgba(15, 23, 42, 0.42);
-      display: none;
-      align-items: center;
-      justify-content: center;
-      padding: 18px;
-    }
-
-    .modalBackdrop.open {
-      display: flex;
-    }
-
-    .modalCard {
-      width: min(760px, 100%);
-      max-height: min(760px, 92vh);
-      overflow: auto;
-      background: #fff;
-      border: 1px solid var(--line);
-      border-radius: 14px;
-      box-shadow: 0 18px 60px rgba(0,0,0,0.28);
-      padding: 16px;
-    }
-
-    .modalHeader {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      margin-bottom: 10px;
-    }
-
-    .modalHeader h2 {
-      margin: 0;
-      font-size: 18px;
-    }
-
-    .modalCard h3 {
-      margin: 14px 0 6px;
-      font-size: 14px;
-    }
-
-    .modalCard p,
-    .modalCard li {
-      font-size: 13px;
-      line-height: 1.45;
-    }
-
-    .modalCard ol,
-    .modalCard ul {
-      margin-top: 6px;
-      padding-left: 20px;
-    }
-
     .miniLegend {
       margin-top: 6px;
       display: flex;
@@ -453,8 +388,7 @@
     }
 
     .legendSaved { color: #dc2626; }
-    .legendQuery { color: #00b7ff; }
-
+    .legendQuery { color: #7c3aed; }
 
     .status {
       background: #fff;
@@ -620,9 +554,6 @@
       <button id="remoteDataBtn">Готовая привязка</button>
     </div>
     <div class="topActions">
-      <input id="remoteBasePathInput" class="remotePathInput" value="data" title="Папка с готовыми привязками: data или полный URL" />
-      <button id="reloadRemoteIndexBtn">Индекс GitHub</button>
-      <button id="trainingBtn" class="helpButton" title="Краткое обучение">?</button>
       <button id="newProjectBtn">Новый проект</button>
       <button id="saveProjectBtn" class="primary">Скачать JSON</button>
       <input id="loadProjectInput" type="file" accept="application/json,.json" title="Открыть проект JSON" />
@@ -638,8 +569,9 @@
           <select id="folderPhotoSelect"><option value="">папка с фото не выбрана</option></select>
           <button id="loadFolderPhotoBtn">Выбрать фото из папки</button>
           <input id="imageInput" type="file" accept="image/*" />
-          <input id="imageName" placeholder="Название снимка" />
-          <input id="imageUrl" placeholder="Путь/URL файла снимка, если он лежит отдельно" />
+          <input id="imageName" placeholder="Название снимка / подпись" />
+          <input id="imageFileName" placeholder="Название файла фото в data/tiles, например photo_001.jpg" />
+          <input id="imageUrl" type="hidden" />
           <textarea id="imageComment" placeholder="Комментарий к снимку / файлу"></textarea>
           <div class="metaPanel">
             <div class="metaTitle">Свойства снимка</div>
@@ -675,7 +607,7 @@
             </div>
           </div>
         </div>
-        <div class="hint">Папку с фото достаточно выбрать один раз в текущей сессии. Сам файл изображения используется только для привязки и предпросмотра, но не записывается в JSON. В JSON сохраняются точки, привязка, области, комментарии, метаданные, имя файла и внешний путь/URL.</div>
+        <div class="hint">Папку с фото достаточно выбрать один раз в текущей сессии. Сам файл изображения используется только для привязки и предпросмотра, но не записывается в JSON. В JSON сохраняются точки, привязка, области, комментарии, метаданные и название файла снимка для поиска в data/tiles. Для готовой базы JSON лежат в папке data/regions, а фото — в папке data/tiles.</div>
         <div class="rangeLine">
           <input id="overlayOpacityRange" type="range" min="0" max="100" value="66" />
           <span id="overlayOpacityValue" class="small">66%</span>
@@ -899,34 +831,6 @@
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-
-<div id="trainingModal" class="modalBackdrop" aria-hidden="true">
-  <div class="modalCard" role="dialog" aria-modal="true" aria-labelledby="trainingTitle">
-    <div class="modalHeader">
-      <h2 id="trainingTitle">Краткое обучение</h2>
-      <button id="closeTrainingBtn">Закрыть</button>
-    </div>
-    <h3>Режим «Редактор»</h3>
-    <ol>
-      <li>Выберите папку с фото или загрузите отдельный снимок.</li>
-      <li>Выберите снимок из списка, укажите название, комментарий и при необходимости внешний путь/URL.</li>
-      <li>Поставьте две точки на фото и две соответствующие точки на карте.</li>
-      <li>Нажмите «Применить», затем нарисуйте одну или несколько областей снимка и сохраните их.</li>
-      <li>Скачайте JSON. В него сохраняются привязки и метаданные, но не само overlay-фото.</li>
-    </ol>
-    <h3>Режим «Просмотр»</h3>
-    <ol>
-      <li>Переключитесь на «Готовая привязка».</li>
-      <li>Нарисуйте проверочную область и нажмите «Проверить».</li>
-      <li>Программа загрузит нужные JSON-квадраты из папки <b>data/tiles</b> и покажет найденные пересечения.</li>
-      <li>При выборе найденной области справа откроется снимок: красным показана сохранённая область, голубым — проверочная область.</li>
-    </ol>
-    <h3>Структура для GitHub Pages</h3>
-    <p>В корне сайта должен лежать <b>index.html</b>, а готовые привязки — в <b>data/index.json</b> и <b>data/tiles/*.json</b>. Большие фото лучше хранить отдельно и указывать в JSON через <b>imageUrl</b>. Тогда сайт подгружает только выбранное фото, а не весь архив.</p>
-  </div>
-</div>
-
 <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
 <script>
 'use strict';
@@ -954,7 +858,6 @@ const state = {
   remotePolygons: [],
   remoteLoadedTiles: {},
   remoteAvailableTiles: null,
-  remoteBasePath: 'data',
   queryPolygon: null,
   selectedPolygonId: null,
   selectedImageId: null,
@@ -1030,6 +933,7 @@ const els = {
   folderPhotoSelect: document.getElementById('folderPhotoSelect'),
   loadFolderPhotoBtn: document.getElementById('loadFolderPhotoBtn'),
   imageName: document.getElementById('imageName'),
+  imageFileName: document.getElementById('imageFileName'),
   imageUrl: document.getElementById('imageUrl'),
   imageComment: document.getElementById('imageComment'),
   imageQuality: document.getElementById('imageQuality'),
@@ -1080,10 +984,7 @@ const els = {
   localDataBtn: document.getElementById('localDataBtn'),
   remoteDataBtn: document.getElementById('remoteDataBtn'),
   remoteBasePathInput: document.getElementById('remoteBasePathInput'),
-  reloadRemoteIndexBtn: document.getElementById('reloadRemoteIndexBtn'),
-  trainingBtn: document.getElementById('trainingBtn'),
-  trainingModal: document.getElementById('trainingModal'),
-  closeTrainingBtn: document.getElementById('closeTrainingBtn')
+  reloadRemoteIndexBtn: document.getElementById('reloadRemoteIndexBtn')
 };
 
 let coordinateMarker = null;
@@ -1197,9 +1098,9 @@ function imageMetadataText(img) {
   const comment = (img.comment || '').trim();
   return [
     'Файл: ' + (img.name || 'без названия'),
-    'Имя исходного изображения: ' + (img.fileName || img.name || 'не задано'),
+    'Имя исходного изображения: ' + (img.sourceFileName || img.originalFileName || img.fileName || 'не задано'),
     'Изображение в JSON: не сохраняется',
-    'Источник изображения: ' + (img.imageUrl ? img.imageUrl : (img.dataUrl ? 'загружено локально в текущей сессии' : 'не задан')),
+    'Файл для поиска в data/tiles: ' + (img.imageFileName || img.tileFileName || img.photoFileName || img.fileName || 'не задан'),
     'Качество: ' + QUALITY_LABELS[img.quality],
     'Масштаб: ' + SCALE_LABELS[img.scaleTag],
     'Дата: ' + (img.dateEnabled ? formatMonth(img.dateMonth) : 'без даты'),
@@ -1299,8 +1200,7 @@ function setDataSourceMode(mode) {
   els.remoteDataBtn.classList.toggle('active', next === 'remote');
   if (next === 'remote') {
     setInterfaceMode('view');
-    loadRemoteIndex(false);
-    setStatus('Включён режим готовой привязки. Нарисуйте проверочную область: приложение загрузит нужные квадраты из GitHub.');
+    setStatus('Включён режим готовой привязки. Нарисуйте проверочную область: приложение загрузит нужные JSON из папки data/regions.');
   } else {
     setStatus('Включён режим своего проекта. Здесь можно загружать снимки, ставить точки и сохранять JSON без встроенных фото.');
   }
@@ -1312,18 +1212,6 @@ els.editModeBtn.onclick = () => setInterfaceMode('edit');
 els.viewModeBtn.onclick = () => setInterfaceMode('view');
 els.localDataBtn.onclick = () => setDataSourceMode('local');
 els.remoteDataBtn.onclick = () => setDataSourceMode('remote');
-els.remoteBasePathInput.addEventListener('change', () => {
-  state.remoteBasePath = normalizeRemoteBasePath(els.remoteBasePathInput.value);
-  state.remoteLoadedTiles = {};
-  state.remoteImages = [];
-  state.remotePolygons = [];
-  state.remoteAvailableTiles = null;
-  if (state.dataSourceMode === 'remote') {
-    loadRemoteIndex(true);
-    renderAll();
-  }
-});
-els.reloadRemoteIndexBtn.onclick = () => loadRemoteIndex(true);
 
 function setBaseLayer(key) {
   const normalized = key === 'satellite' ? 'satellite' : 'street';
@@ -1416,30 +1304,41 @@ map.on('mousemove', ev => {
   if (els.cursorCoords) els.cursorCoords.textContent = 'Курсор: ' + formatCoord(ev.latlng.lat) + ', ' + formatCoord(ev.latlng.lng);
 });
 
-function normalizeRemoteBasePath(value) {
-  const clean = String(value || 'data').trim() || 'data';
-  return clean.replace(/\/+$/, '');
+const REMOTE_REGIONS_DIR = 'data/regions';
+const REMOTE_TILES_DIR = 'data/tiles';
+
+function remoteRegionUrl(tile) {
+  return REMOTE_REGIONS_DIR + '/' + String(tile || '').replace(/^\/+/, '') + '.json';
 }
 
-function remoteUrl(path) {
-  const base = normalizeRemoteBasePath(els.remoteBasePathInput ? els.remoteBasePathInput.value : state.remoteBasePath);
-  state.remoteBasePath = base;
-  return base + '/' + String(path || '').replace(/^\/+/, '');
-}
-
-function resolveRemoteAssetUrl(url, baseUrl) {
-  const text = String(url || '').trim();
+function remoteTileAssetUrl(path) {
+  const text = String(path || '').trim();
   if (!text) return '';
-  try { return new URL(text, baseUrl).href; } catch (e) { return text; }
+  if (/^https?:\/\//i.test(text) || text.startsWith('data:') || text.startsWith('blob:')) return text;
+  let normalized = text.replace(/\\/g, '/').replace(/^\.\//, '').replace(/^\/+/, '');
+  if (normalized.startsWith(REMOTE_TILES_DIR + '/')) return normalized;
+  if (normalized.startsWith('images/')) normalized = normalized.slice('images/'.length);
+  if (normalized.startsWith('tiles/')) normalized = normalized.slice('tiles/'.length);
+  if (normalized.startsWith('data/images/')) normalized = normalized.slice('data/images/'.length);
+  if (normalized.startsWith('data/tiles/')) normalized = normalized.slice('data/tiles/'.length);
+  return REMOTE_TILES_DIR + '/' + normalized;
 }
 
-function resolveRemoteImageUrl(img, tileUrl) {
-  const raw = String(img.imageUrl || img.url || img.imagePath || img.path || '').trim();
+function resolveRemoteImageUrl(img, tile, tileUrl) {
+  if (!img) return '';
+  const raw = String(
+    img.imageFileName ||
+    img.tileFileName ||
+    img.photoFileName ||
+    img.fileName ||
+    img.imageUrl ||
+    img.url ||
+    img.imagePath ||
+    img.path ||
+    ''
+  ).trim();
   if (!raw) return '';
-  if (/^https?:\/\//i.test(raw) || raw.startsWith('data:') || raw.startsWith('blob:')) return raw;
-  const normalized = raw.replace(/\\/g, '/').replace(/^\.\//, '');
-  if (normalized.startsWith('../')) return resolveRemoteAssetUrl(normalized, tileUrl);
-  return resolveRemoteAssetUrl(normalized, remoteUrl(''));
+  return remoteTileAssetUrl(raw);
 }
 
 async function fetchJsonIfExists(url) {
@@ -1449,23 +1348,6 @@ async function fetchJsonIfExists(url) {
     throw new Error('HTTP ' + response.status + ' при загрузке ' + url);
   }
   return response.json();
-}
-
-async function loadRemoteIndex(showStatus = true) {
-  const url = remoteUrl('index.json');
-  try {
-    const data = await fetchJsonIfExists(url);
-    if (data && Array.isArray(data.tiles)) {
-      state.remoteAvailableTiles = new Set(data.tiles.map(String));
-      if (showStatus) setStatus('Индекс готовых привязок загружен. Квадратов в индексе: ' + state.remoteAvailableTiles.size + '.');
-    } else {
-      state.remoteAvailableTiles = null;
-      if (showStatus) setStatus('index.json не найден. Приложение будет пробовать загружать файлы квадратов напрямую.');
-    }
-  } catch (e) {
-    state.remoteAvailableTiles = null;
-    if (showStatus) setStatus('Индекс не загружен: ' + e.message + '. Квадраты будут проверяться прямой загрузкой.');
-  }
 }
 
 function tileNameFromBase(latBase, lngBase) {
@@ -1509,7 +1391,7 @@ function normalizeRemoteTilePayload(payload, tile, tileUrl) {
       id: newId,
       source: 'remote',
       sourceTile: tile,
-      imageUrl: resolveRemoteImageUrl(img, tileUrl),
+      imageUrl: resolveRemoteImageUrl(img, tile, tileUrl),
       imagePath: img.imagePath || img.path || ''
     }, idx);
     images.push(image);
@@ -1557,11 +1439,7 @@ function normalizeRemoteTilePayload(payload, tile, tileUrl) {
 
 async function loadRemoteTile(tile) {
   if (state.remoteLoadedTiles[tile]) return { loaded: false, skipped: true };
-  if (state.remoteAvailableTiles && !state.remoteAvailableTiles.has(tile)) {
-    state.remoteLoadedTiles[tile] = 'missing-index';
-    return { loaded: false, skipped: true };
-  }
-  const url = remoteUrl('tiles/' + tile + '.json');
+  const url = remoteRegionUrl(tile);
   const payload = await fetchJsonIfExists(url);
   if (!payload) {
     state.remoteLoadedTiles[tile] = 'missing';
@@ -1614,14 +1492,17 @@ function loadImageMeta(src) {
 function fileKeyCandidates(img) {
   if (!img) return [];
   const values = [
-    img.fileName,
     img.imageFileName,
+    img.tileFileName,
+    img.photoFileName,
+    img.fileName,
     img.sourceFileName,
-    img.name,
+    img.originalFileName,
     img.imagePath,
     img.path,
     img.imageUrl,
-    img.url
+    img.url,
+    img.name
   ].filter(Boolean).map(v => String(v).replace(/\\/g, '/'));
   const out = [];
   values.forEach(v => {
@@ -1652,7 +1533,9 @@ function stripEmbeddedImageData(img) {
   delete out.imageData;
   delete out.data;
   delete out.objectUrl;
-  if (!out.fileName && out.name) out.fileName = out.name;
+  if (!out.imageFileName) out.imageFileName = img.imageFileName || img.tileFileName || img.photoFileName || img.fileName || '';
+  if (!out.sourceFileName) out.sourceFileName = img.sourceFileName || img.originalFileName || img.fileName || '';
+  if (!out.fileName) out.fileName = out.imageFileName || out.sourceFileName || out.name || '';
   if (!out.imageUrl) out.imageUrl = img.imageUrl || img.url || '';
   return out;
 }
@@ -1662,8 +1545,10 @@ function normalizeProjectImage(img, idx = 0) {
     ...img,
     opacity: clampOpacity(typeof img.opacity === 'number' ? img.opacity : 0.66),
     comment: typeof img.comment === 'string' ? img.comment : '',
-    name: img.name || img.fileName || ('Снимок ' + (idx + 1)),
+    name: img.name || img.fileName || img.imageFileName || ('Снимок ' + (idx + 1)),
+    imageFileName: img.imageFileName || img.tileFileName || img.photoFileName || img.fileName || '',
     fileName: img.fileName || img.imageFileName || img.sourceFileName || img.name || '',
+    sourceFileName: img.sourceFileName || img.originalFileName || img.fileName || '',
     imagePath: img.imagePath || img.path || '',
     imageUrl: img.imageUrl || img.url || '',
     dataUrl: img.dataUrl || ''
@@ -1718,6 +1603,7 @@ function recomputeGeorefIfPossible(img) {
 function syncImageControls(img) {
   if (!img) {
     els.imageName.value = '';
+    if (els.imageFileName) els.imageFileName.value = '';
     els.imageUrl.value = '';
     els.imageComment.value = '';
     els.imageQuality.value = 'satisfactory';
@@ -1735,6 +1621,7 @@ function syncImageControls(img) {
   if (typeof img.comment !== 'string') img.comment = '';
   normalizeImageMetadata(img);
   els.imageName.value = img.name || '';
+  if (els.imageFileName) els.imageFileName.value = img.imageFileName || img.tileFileName || img.photoFileName || img.fileName || '';
   els.imageUrl.value = img.imageUrl || '';
   els.imageComment.value = img.comment || '';
   els.imageQuality.value = img.quality;
@@ -1756,6 +1643,11 @@ function saveImageMetaFromControls(silent = false) {
     return;
   }
   img.name = els.imageName.value.trim() || img.name || 'Без названия';
+  const fileNameForTiles = els.imageFileName ? els.imageFileName.value.trim() : '';
+  if (fileNameForTiles) {
+    img.imageFileName = fileNameForTiles;
+    img.fileName = fileNameForTiles;
+  }
   img.imageUrl = els.imageUrl.value.trim();
   img.comment = els.imageComment.value;
   Object.assign(img, readImageMetadataControls());
@@ -1764,7 +1656,7 @@ function saveImageMetaFromControls(silent = false) {
   els.overlayOpacityValue.textContent = Math.round(img.opacity * 100) + '%';
   if (img.georef) updateImagePosition(img, Boolean(state.selectedPolygonId));
   renderLists();
-  if (!silent) setStatus('Свойства, комментарий и прозрачность выбранного снимка сохранены.');
+  if (!silent) setStatus('Свойства, имя файла для data/tiles, комментарий и прозрачность выбранного снимка сохранены.');
 }
 
 function selectedCommentText() {
@@ -1986,7 +1878,9 @@ async function loadImageFileAsDraft(file, template = null) {
   const draft = {
     id: uid('img'),
     name: els.imageName.value.trim() || file.name,
-    fileName: file.name,
+    imageFileName: (els.imageFileName && els.imageFileName.value.trim()) || file.name,
+    fileName: (els.imageFileName && els.imageFileName.value.trim()) || file.name,
+    sourceFileName: file.name,
     imagePath: String(file.webkitRelativePath || file.name).replace(/\\/g, '/'),
     imageUrl: els.imageUrl.value.trim(),
     dataUrl,
@@ -2039,7 +1933,10 @@ async function replaceSelectedImageWithFile(file) {
   }
   const oldGeoref = img.georef ? { ...img.georef } : null;
   img.dataUrl = dataUrl;
-  img.fileName = file.name;
+  const fileNameForTiles = els.imageFileName ? els.imageFileName.value.trim() : '';
+  img.imageFileName = fileNameForTiles || img.imageFileName || file.name;
+  img.fileName = img.imageFileName;
+  img.sourceFileName = file.name;
   img.imagePath = String(file.webkitRelativePath || file.name).replace(/\\/g, '/');
   img.imageUrl = els.imageUrl.value.trim() || img.imageUrl || '';
   img.width = meta.width;
@@ -2222,7 +2119,8 @@ els.overlayOpacityRange.addEventListener('input', () => {
 document.getElementById('saveImageMetaBtn').onclick = () => saveImageMetaFromControls(false);
 els.imageComment.addEventListener('change', () => saveImageMetaFromControls(true));
 els.imageName.addEventListener('change', () => saveImageMetaFromControls(true));
-els.imageUrl.addEventListener('change', () => saveImageMetaFromControls(true));
+if (els.imageUrl) els.imageUrl.addEventListener('change', () => saveImageMetaFromControls(true));
+if (els.imageFileName) els.imageFileName.addEventListener('change', () => saveImageMetaFromControls(true));
 els.imageQuality.addEventListener('change', () => saveImageMetaFromControls(true));
 els.imageClouds.addEventListener('change', () => saveImageMetaFromControls(true));
 els.imageSnow.addEventListener('change', () => saveImageMetaFromControls(true));
@@ -2565,7 +2463,6 @@ function latLngToImagePixel(latLng, img) {
   if (!Number.isFinite(pt.lat) || !Number.isFinite(pt.lng)) return null;
 
   const baseZoom = typeof img.georef.baseZoom === 'number' ? img.georef.baseZoom : map.getZoom();
-  const savedZoom = map.getZoom();
   const top = map.project(L.latLng(img.georef.topLeftLatLng[0], img.georef.topLeftLatLng[1]), baseZoom);
   const cur = map.project(pt, baseZoom);
   const scale = Number(img.georef.scale);
@@ -2586,10 +2483,30 @@ function clampMiniScale(v) {
   return Math.max(0.02, Math.min(40, Number(v) || 1));
 }
 
+function updateMiniOverlayStyles() {
+  if (!els.selectedMiniSvg) return;
+  const s = Math.max(0.02, Number(miniView.scale) || 1);
+  els.selectedMiniSvg.querySelectorAll('[data-mini-poly=\"selected\"]').forEach(el => {
+    el.setAttribute('stroke-width', '1.25');
+    el.setAttribute('vector-effect', 'non-scaling-stroke');
+  });
+  els.selectedMiniSvg.querySelectorAll('[data-mini-poly=\"query\"]').forEach(el => {
+    el.setAttribute('stroke-width', '1.05');
+    el.setAttribute('stroke-dasharray', '5 4');
+    el.setAttribute('vector-effect', 'non-scaling-stroke');
+  });
+  els.selectedMiniSvg.querySelectorAll('[data-mini-point=\"1\"]').forEach(el => {
+    el.setAttribute('r', String(Math.max(0.7, Math.min(2.0, 1.6 / s))));
+    el.setAttribute('stroke-width', '0.7');
+    el.setAttribute('vector-effect', 'non-scaling-stroke');
+  });
+}
+
 function applyMiniTransform() {
   if (!els.selectedMiniLayer) return;
   miniView.scale = clampMiniScale(miniView.scale);
   els.selectedMiniLayer.style.transform = `translate(${miniView.offsetX}px, ${miniView.offsetY}px) scale(${miniView.scale})`;
+  updateMiniOverlayStyles();
 }
 
 function fitMiniToImage() {
@@ -2662,7 +2579,7 @@ function updateMiniPreview() {
   }
   const src = imageSource(img);
   if (!src) {
-    clearMiniPreview('Фото не загружено. Для GitHub укажите imageUrl, для локального проекта выберите папку с фото.');
+    clearMiniPreview('Фото не загружено. Для готовой базы проверьте имя файла в JSON и наличие снимка в папке data/tiles. Для локального проекта выберите папку с фото.');
     return;
   }
 
@@ -2696,9 +2613,6 @@ function updateMiniPreview() {
     miniView.polygonPts = selectedPts.length >= 3 ? selectedPts : queryPts;
     els.selectedMiniSvg.innerHTML = '';
 
-    const strokeW = Math.max(4, Math.min(w, h) / 180);
-    const pointR = Math.max(5, Math.min(w, h) / 260);
-
     const drawPolygonOnMini = (pts, options) => {
       if (!pts || pts.length < 3) return false;
       const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
@@ -2706,7 +2620,9 @@ function updateMiniPreview() {
       poly.setAttribute('fill', options.fill);
       poly.setAttribute('stroke', options.stroke);
       poly.setAttribute('stroke-linejoin', 'round');
-      poly.setAttribute('stroke-width', strokeW);
+      poly.setAttribute('stroke-linecap', 'round');
+      poly.setAttribute('shape-rendering', 'geometricPrecision');
+      poly.setAttribute('data-mini-poly', options.kind || 'selected');
       if (options.dash) poly.setAttribute('stroke-dasharray', options.dash);
       els.selectedMiniSvg.appendChild(poly);
       if (options.points) {
@@ -2714,10 +2630,9 @@ function updateMiniPreview() {
           const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
           c.setAttribute('cx', pt.x);
           c.setAttribute('cy', pt.y);
-          c.setAttribute('r', pointR);
-          c.setAttribute('fill', '#ffffff');
+          c.setAttribute('data-mini-point', '1');
+          c.setAttribute('fill', 'rgba(255,255,255,0.45)');
           c.setAttribute('stroke', options.stroke);
-          c.setAttribute('stroke-width', Math.max(2, Math.min(w, h) / 600));
           els.selectedMiniSvg.appendChild(c);
         });
       }
@@ -2725,21 +2640,24 @@ function updateMiniPreview() {
     };
 
     const hasSelected = drawPolygonOnMini(selectedPts, {
-      fill: 'rgba(220,38,38,0.22)',
+      kind: 'selected',
+      fill: 'rgba(220,38,38,0.08)',
       stroke: '#dc2626',
       points: true
     });
     const hasQuery = drawPolygonOnMini(queryPts, {
-      fill: 'rgba(0,183,255,0.10)',
-      stroke: '#00b7ff',
-      dash: String(Math.max(10, strokeW * 2)) + ' ' + String(Math.max(8, strokeW * 1.4)),
+      kind: 'query',
+      fill: 'rgba(124,58,237,0.05)',
+      stroke: '#7c3aed',
+      dash: '5 4',
       points: false
     });
+    updateMiniOverlayStyles();
 
     if (hasSelected || hasQuery) {
       const parts = [];
       if (hasSelected) parts.push('красным — сохранённая область');
-      if (hasQuery) parts.push('голубым — проверочная область');
+      if (hasQuery) parts.push('зелёным — проверочная область');
       els.selectedMiniText.textContent = (img.name || 'Выбранный снимок') + ' · ' + parts.join(', ');
     } else {
       els.selectedMiniText.textContent = (img.name || 'Выбранный снимок') + ' · области не удалось пересчитать в координаты снимка. Проверьте точки привязки.';
@@ -2755,6 +2673,9 @@ function updateMiniPreview() {
     }
   };
 
+  els.selectedMiniPhoto.onerror = () => {
+    clearMiniPreview('Фото не удалось открыть: ' + src + '. Проверьте путь в JSON и наличие файла в data/tiles.');
+  };
   if (els.selectedMiniPhoto.src !== src) {
     els.selectedMiniPhoto.onload = draw;
     els.selectedMiniPhoto.src = src;
@@ -2765,14 +2686,12 @@ function updateMiniPreview() {
   }
 }
 
-
 function renderAll(onlySelected = false) {
   renderImages(onlySelected && Boolean(state.selectedImageId));
   renderPolygons(onlySelected);
   renderLists();
   updateMiniPreview();
 }
-
 
 if (els.miniZoomOutBtn) els.miniZoomOutBtn.onclick = () => zoomMiniAt(
   els.selectedMiniViewport.getBoundingClientRect().left + els.selectedMiniViewport.clientWidth / 2,
@@ -2817,33 +2736,9 @@ if (els.selectedMiniViewport) {
   });
 }
 
-
-function openTrainingModal() {
-  if (!els.trainingModal) return;
-  els.trainingModal.classList.add('open');
-  els.trainingModal.setAttribute('aria-hidden', 'false');
-}
-
-function closeTrainingModal() {
-  if (!els.trainingModal) return;
-  els.trainingModal.classList.remove('open');
-  els.trainingModal.setAttribute('aria-hidden', 'true');
-}
-
-if (els.trainingBtn) els.trainingBtn.onclick = openTrainingModal;
-if (els.closeTrainingBtn) els.closeTrainingBtn.onclick = closeTrainingModal;
-if (els.trainingModal) {
-  els.trainingModal.addEventListener('click', ev => {
-    if (ev.target === els.trainingModal) closeTrainingModal();
-  });
-}
-window.addEventListener('keydown', ev => {
-  if (ev.key === 'Escape') closeTrainingModal();
-});
-
 function exportProject() {
   const project = {
-    version: 17,
+    version: 21,
     createdAt: new Date().toISOString(),
     storage: { embeddedOverlayImages: false },
     dataSourceMode: state.dataSourceMode,

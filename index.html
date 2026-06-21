@@ -153,6 +153,121 @@
       font-size: 14px;
     }
 
+    .editorCollapsible > h2 {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .editorCollapsible > h2::after {
+      content: "−";
+      color: var(--muted);
+      font-size: 16px;
+      font-weight: 400;
+    }
+
+    .editorCollapsible.collapsed > h2 { margin-bottom: 0; }
+    .editorCollapsible.collapsed > h2::after { content: "+"; }
+    .editorCollapsible.collapsed > :not(h2) { display: none !important; }
+
+    summary.metaTitle {
+      cursor: pointer;
+      color: var(--muted);
+      margin: 0;
+    }
+
+    .viewOnly, .multiOnly { display: none; }
+    body.view-mode .viewOnly { display: block; }
+    body.multi-mode .multiOnly { display: block; }
+
+    body.multi-mode #main {
+      grid-template-columns: 310px minmax(0, 1fr) 370px;
+    }
+
+    body.multi-mode .editorOnly,
+    body.multi-mode .viewOnly {
+      display: none !important;
+    }
+
+    body.multi-mode #dataSourceTabs,
+    body.multi-mode .topActions {
+      display: none;
+    }
+
+    body.afs-view-mode #multiControlCard,
+    body.afs-view-mode #multiRotationControls,
+    body.afs-view-mode #multiImageEditFields {
+      display: none !important;
+    }
+
+    body.afs-view-mode #multiViewNotice {
+      display: block;
+    }
+
+    #multiViewNotice {
+      display: none;
+    }
+
+    .exportProgress {
+      margin-top: 7px;
+      min-height: 34px;
+    }
+
+    body.multi-mode #mapPane .paneTitle::after {
+      content: "привязка аэрофотосъёмки";
+      color: var(--muted);
+      font-weight: 400;
+      font-size: 12px;
+    }
+
+    .multiPointItem {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 7px;
+      margin: 6px 0;
+      background: #fff;
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .multiPointItem.badPoint {
+      border-left: 5px solid var(--danger);
+      background: var(--danger-soft);
+    }
+
+    .multiPointItem .pointActions {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 5px;
+    }
+
+    .multiMetrics {
+      border: 1px solid #b9ebd0;
+      background: var(--free-soft);
+      border-radius: 9px;
+      padding: 8px;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .multiMetrics.warn {
+      border-color: #ffd58a;
+      background: #fff4df;
+    }
+
+    .photoPoint.multiPoint {
+      width: 7px;
+      height: 7px;
+      margin-left: -3.5px;
+      margin-top: -3.5px;
+      background: #ffea00;
+      border-color: #000;
+      box-shadow: 0 0 0 1px #fff;
+    }
+
     .hint {
       color: var(--muted);
       font-size: 12px;
@@ -388,7 +503,11 @@
     }
 
     .legendSaved { color: #dc2626; }
-    .legendQuery { color: #7c3aed; }
+    .legendQuery { color: #ffea00; }
+    .legendQuery .legendSwatch {
+      background: rgba(255, 234, 0, 0.28);
+      box-shadow: 0 0 0 1px #000;
+    }
 
     .status {
       background: #fff;
@@ -535,6 +654,8 @@
       #workArea { grid-template-columns: 1fr; grid-template-rows: 560px 560px; }
       body.view-mode #main { grid-template-columns: 1fr; }
       body.view-mode #workArea { grid-template-rows: 640px; }
+      body.multi-mode #main { grid-template-columns: 1fr; }
+      body.multi-mode #workArea { grid-template-rows: 560px 560px; }
       #topbar { grid-template-columns: 1fr; grid-template-rows: none; }
       .topActions { justify-content: flex-start; }
       #app { grid-template-rows: auto 1fr; }
@@ -548,8 +669,9 @@
     <div class="modeTabs">
       <button id="editModeBtn">Редактор</button>
       <button id="viewModeBtn" class="active">Просмотр</button>
+      <button id="multiModeBtn">Привязка аэрофотосъёмки</button>
     </div>
-    <div class="modeTabs">
+    <div class="modeTabs" id="dataSourceTabs">
       <button id="localDataBtn" class="active">Мой проект</button>
       <button id="remoteDataBtn">Готовая привязка</button>
     </div>
@@ -562,7 +684,7 @@
 
   <main id="main">
     <aside id="leftPanel">
-      <section class="card">
+      <section class="card editorCollapsible editorOnly">
         <h2>1. Снимок</h2>
         <div class="fieldGap">
           <input id="photoFolderInput" type="file" accept="image/*" multiple webkitdirectory directory />
@@ -573,8 +695,8 @@
           <input id="imageFileName" placeholder="Название файла фото в data/tiles, например photo_001.jpg" />
           <input id="imageUrl" type="hidden" />
           <textarea id="imageComment" placeholder="Комментарий к снимку / файлу"></textarea>
-          <div class="metaPanel">
-            <div class="metaTitle">Свойства снимка</div>
+          <details class="metaPanel" open>
+            <summary class="metaTitle">Свойства снимка</summary>
             <label class="fieldLabel">Качество снимка
               <select id="imageQuality">
                 <option value="bad">плохое</option>
@@ -605,7 +727,7 @@
                 Есть снег
               </label>
             </div>
-          </div>
+          </details>
         </div>
         <div class="hint">Папку с фото достаточно выбрать один раз в текущей сессии. Сам файл изображения используется только для привязки и предпросмотра, но не записывается в JSON. В JSON сохраняются точки, привязка, области, комментарии, метаданные и название файла снимка для поиска в data/tiles. Для готовой базы JSON лежат в папке data/regions, а фото — в папке data/tiles.</div>
         <div class="rangeLine">
@@ -624,66 +746,41 @@
         <input id="photoZoomRange" type="range" min="10" max="800" value="100" />
       </section>
 
-      <section class="card">
-        <h2>2. Привязка</h2>
-        <div class="row">
-          <button id="setImgPt1Btn">Фото 1</button>
-          <button id="setImgPt2Btn">Фото 2</button>
+      <section class="card multiOnly" id="multiImageCard">
+        <h2>Снимок для привязки</h2>
+        <div id="multiViewNotice" class="status">Открыт сохранённый файл АФС в режиме просмотра. Контрольные и проверочные области скрыты.</div>
+        <div class="fieldGap" id="multiImageEditFields">
+          <select id="multiImageSelect"><option value="">снимок не загружен</option></select>
+          <input id="multiImageInput" type="file" accept="image/*" />
+          <input id="multiImageName" placeholder="Название снимка" />
+          <input id="multiImageFileName" placeholder="Имя исходного файла" />
+        </div>
+        <div class="hint">Снимок и точки этого режима хранятся отдельно от «Моего проекта» и никогда не включаются в основной JSON проекта.</div>
+        <div class="rangeLine">
+          <input id="multiOpacityRange" type="range" min="0" max="100" value="66" />
+          <span id="multiOpacityValue" class="small">66%</span>
         </div>
         <div class="row">
-          <button id="setMapPt1Btn">Карта 1</button>
-          <button id="setMapPt2Btn">Карта 2</button>
+          <button id="multiFitPhotoBtn">Вписать фото</button>
+          <button id="multiCenterPhotoBtn">Центр</button>
         </div>
-        <div class="row">
-          <button id="applyGeorefBtn" class="primary">Применить</button>
-          <button id="resetGeorefPointsBtn">Сбросить</button>
+        <div class="row3">
+          <button id="multiPhotoZoomOutBtn">−</button>
+          <button id="multiPhotoZoomInBtn">+</button>
+          <button id="multiSaveNameBtn">Сохранить имя</button>
         </div>
-        <div class="hint">Точки на фото ставятся в левом окне, точки на карте — в правом. Маркеры сделаны маленькими для более точной установки.</div>
-      </section>
-
-      <section class="card">
-        <h2>3. Область снимка</h2>
-        <select id="imageSelect"></select>
-        <input id="polygonName" placeholder="Название новой области" />
-        <label class="checkLine">
-          <input id="createFreeAreaCheck" type="checkbox" />
-          Пометить новую область как бесплатную
+        <div id="multiRotationControls">
+        <label class="fieldLabel">Предварительный поворот, °
+          <div class="row3">
+            <button id="multiRotateLeftBtn" type="button" title="Повернуть против часовой стрелки на 90°">↺ 90°</button>
+            <input id="multiRotationInput" type="number" min="-180" max="180" step="1" value="0" />
+            <button id="multiRotateRightBtn" type="button" title="Повернуть по часовой стрелке на 90°">90° ↻</button>
+          </div>
         </label>
-        <div class="row">
-          <button id="drawPolygonBtn">Рисовать</button>
-          <button id="finishPolygonBtn" class="primary">Сохранить</button>
+        <button id="multiRotationResetBtn" type="button">Сбросить поворот</button>
         </div>
-        <button id="cancelDrawingBtn">Отменить рисование</button>
-        <div class="hint">К одному снимку сохраняется любое количество областей. Каждая область хранит собственный флаг бесплатности.</div>
-      </section>
-
-      <section class="card">
-        <h2>Карта</h2>
-        <div class="row">
-          <select id="baseLayerSelect">
-            <option value="street">Карта</option>
-            <option value="satellite">Спутник</option>
-          </select>
-          <button id="goToCoordBtn">Перейти</button>
-        </div>
-        <input id="coordInput" placeholder="54.352, 18.646" />
-        <div class="row">
-          <input id="coordLat" placeholder="Широта" />
-          <input id="coordLng" placeholder="Долгота" />
-        </div>
-        <div class="row">
-          <button id="useMapCenterBtn">Центр карты</button>
-          <button id="clearCoordMarkerBtn">Убрать метку</button>
-        </div>
-        <div id="cursorCoords" class="hint">Курсор: —</div>
-      </section>
-
-      <section class="card" id="dangerCard">
-        <details>
-          <summary>Опасные действия</summary>
-          <button id="replaceImageBtn" class="danger">Заменить файл выбранного снимка</button>
-          <div class="hint">Эта кнопка меняет изображение внутри уже существующего снимка. Обычная загрузка выше так не делает.</div>
-        </details>
+        <div class="hint">Поворот меняет только рабочее отображение снимка перед расстановкой точек. Координаты точек сохраняются относительно исходного файла, поэтому привязка и внешний файл изображения остаются совместимыми.</div>
+        <div class="hint">Распределяйте опорные точки по всей площади снимка, особенно по углам и краям. Точки, расположенные только в центре или на одной линии, дают нестабильную привязку.</div>
       </section>
     </aside>
 
@@ -710,7 +807,82 @@
     </section>
 
     <aside id="rightPanel">
-      <section class="card">
+      <section class="card multiOnly" id="multiControlCard">
+        <h2>Привязка аэрофотосъёмки</h2>
+        <div id="multiStatus" class="status">Загрузите снимок и добавьте не менее четырёх пар точек.</div>
+        <div class="row">
+          <button id="multiAddPairBtn" class="primary">Добавить пару точек</button>
+          <button id="multiApplyBtn">Рассчитать</button>
+        </div>
+        <div class="row">
+          <button id="multiUndoBtn">Удалить последнюю</button>
+          <button id="multiResetBtn" class="danger">Сбросить точки</button>
+        </div>
+        <div id="multiMetrics" class="multiMetrics warn">Пар точек: 0. Для расчёта нужно минимум 4.</div>
+        <div id="multiPointsList"></div>
+        <div class="hint">После нажатия «Добавить пару точек» сначала кликните ориентир на фото, затем тот же ориентир на карте. Дополнительные точки повышают точность преобразования снимка.</div>
+      </section>
+
+      <section class="card multiOnly">
+        <h2>Карта для привязки</h2>
+        <select id="multiBaseLayerSelect">
+          <option value="street">Карта</option>
+          <option value="satellite">Спутник</option>
+        </select>
+        <div class="row">
+          <input id="multiCoordInput" placeholder="54.352, 18.646" />
+          <button id="multiGoToCoordBtn">Перейти</button>
+        </div>
+        <div class="row">
+          <input id="multiCoordLat" placeholder="Широта" />
+          <input id="multiCoordLng" placeholder="Долгота" />
+        </div>
+        <div id="multiCursorCoords" class="hint">Курсор: —</div>
+      </section>
+
+      <section class="card multiOnly">
+        <h2>Сохранение и просмотр АФС</h2>
+        <label class="fieldLabel">Формат
+          <select id="multiExportFormat">
+            <option value="json">JSON — снимок и все точки в одном файле</option>
+            <option value="mbtiles">MBTiles — один файл с растровыми тайлами</option>
+            <option value="ozimap">OziMap — ZIP с изображением и файлом .map</option>
+          </select>
+        </label>
+        <label class="fieldLabel">Максимальный размер растрового экспорта
+          <select id="multiExportSize">
+            <option value="2048">2048 px</option>
+            <option value="4096" selected>4096 px</option>
+            <option value="8192">8192 px</option>
+          </select>
+        </label>
+        <button id="multiExportBtn" class="primary">Сохранить привязку</button>
+        <div class="hint">JSON сохраняет исходный полный снимок и все контрольные точки. MBTiles и OziMap создают полный деформированный растр без обрезки по точкам; OziMap скачивается как ZIP, потому что формат .map хранит ссылку на отдельное изображение.</div>
+        <label class="fieldLabel">Открыть сохранённую привязку
+          <input id="multiOpenInput" type="file" accept=".json,.mbtiles,.zip,application/json,application/zip,application/x-sqlite3" />
+        </label>
+        <button id="multiReturnEditBtn" type="button" style="display:none">Вернуться к редактированию</button>
+        <div id="multiExportStatus" class="status exportProgress">Готово к сохранению.</div>
+      </section>
+
+      <section class="card viewOnly">
+        <h2>Переход по координатам</h2>
+        <div class="row">
+          <input id="viewCoordInput" placeholder="54.352, 18.646" />
+          <button id="viewGoToCoordBtn">Перейти</button>
+        </div>
+        <div class="row">
+          <input id="viewCoordLat" placeholder="Широта" />
+          <input id="viewCoordLng" placeholder="Долгота" />
+        </div>
+        <div class="row">
+          <button id="viewUseMapCenterBtn">Центр карты</button>
+          <button id="viewClearCoordMarkerBtn">Убрать метку</button>
+        </div>
+        <div id="viewCursorCoords" class="hint">Курсор: —</div>
+      </section>
+
+      <section class="card viewOnly">
         <h2>Проверка пересечений</h2>
         <label class="checkLine">
           <input id="filterFreeCheck" type="checkbox" />
@@ -777,24 +949,15 @@
           <button id="clearQueryBtn">Очистить</button>
           <button id="showAllBtn">Показать всё</button>
         </div>
-        <label class="checkLine editorOnly">
-          <input id="showSavedPolygonsCheck" type="checkbox" checked />
-          Показывать сохранённые области постоянно
-        </label>
         <div id="status" class="status">Готово.</div>
       </section>
 
-      <section class="card">
+      <section class="card viewOnly">
         <h2>Найденные области</h2>
         <div id="results"></div>
       </section>
 
-      <section class="card" id="commentEditCard">
-        <h2>Комментарий выбранного файла</h2>
-        <div id="selectedFileComment" class="commentBox">Файл не выбран.</div>
-      </section>
-
-      <section class="card">
+      <section class="card viewOnly">
         <h2>Фрагмент на снимке</h2>
         <div class="miniToolbar">
           <button id="miniZoomOutBtn" title="Уменьшить">−</button>
@@ -816,15 +979,93 @@
         <div class="hint">Колесо мыши приближает снимок, перетаскивание двигает изображение. Выделение строится по обратному пересчёту координат карты в координаты снимка.</div>
       </section>
 
-      <section class="card">
-        <h2>Действия с выбранной областью</h2>
-        <button id="deleteSelectedBtn" class="danger editorOnly">Удалить выбранную область</button>
-        <div class="hint">При выборе области из списка отображаются её границы и привязанный снимок.</div>
+      <section class="card editorOnly">
+        <h2>Состояние редактора</h2>
+        <div id="editorStatus" class="status">Готово.</div>
       </section>
 
-      <section class="card" id="imagesCard">
+      <section class="card editorCollapsible editorOnly">
+        <h2>2. Привязка</h2>
+        <div class="row">
+          <button id="setImgPt1Btn">Фото 1</button>
+          <button id="setImgPt2Btn">Фото 2</button>
+        </div>
+        <div class="row">
+          <button id="setMapPt1Btn">Карта 1</button>
+          <button id="setMapPt2Btn">Карта 2</button>
+        </div>
+        <div class="row">
+          <button id="applyGeorefBtn" class="primary">Применить</button>
+          <button id="resetGeorefPointsBtn">Сбросить</button>
+        </div>
+        <div class="hint">Точки на фото ставятся в левом окне, точки на карте — в правом. Маркеры сделаны маленькими для более точной установки.</div>
+      </section>
+
+      <section class="card editorCollapsible editorOnly">
+        <h2>3. Область снимка</h2>
+        <select id="imageSelect"></select>
+        <input id="polygonName" placeholder="Название новой области" />
+        <label class="checkLine">
+          <input id="createFreeAreaCheck" type="checkbox" />
+          Пометить новую область как бесплатную
+        </label>
+        <div class="row">
+          <button id="drawPolygonBtn">Рисовать</button>
+          <button id="finishPolygonBtn" class="primary">Сохранить</button>
+        </div>
+        <button id="cancelDrawingBtn">Отменить рисование</button>
+        <div class="hint">К одному снимку сохраняется любое количество областей. Каждая область хранит собственный флаг бесплатности.</div>
+      </section>
+
+      <section class="card editorCollapsible editorOnly">
+        <h2>Карта</h2>
+        <div class="row">
+          <select id="baseLayerSelect">
+            <option value="street">Карта</option>
+            <option value="satellite">Спутник</option>
+          </select>
+          <button id="goToCoordBtn">Перейти</button>
+        </div>
+        <input id="coordInput" placeholder="54.352, 18.646" />
+        <div class="row">
+          <input id="coordLat" placeholder="Широта" />
+          <input id="coordLng" placeholder="Долгота" />
+        </div>
+        <div class="row">
+          <button id="useMapCenterBtn">Центр карты</button>
+          <button id="clearCoordMarkerBtn">Убрать метку</button>
+        </div>
+        <div id="cursorCoords" class="hint">Курсор: —</div>
+      </section>
+
+      <section class="card editorOnly editorCollapsible" id="commentEditCard">
+        <h2>Комментарий выбранного файла</h2>
+        <div id="selectedFileComment" class="commentBox">Файл не выбран.</div>
+      </section>
+
+      <section class="card editorOnly editorCollapsible">
+        <h2>Области и отображение</h2>
+        <label class="checkLine">
+          <input id="showSavedPolygonsCheck" type="checkbox" checked />
+          Показывать сохранённые области постоянно
+        </label>
+        <div id="projectAreasCount" class="small">Областей: 0</div>
+        <div id="projectAreasList"></div>
+        <button id="deleteSelectedBtn" class="danger">Удалить выбранную область</button>
+        <div class="hint">Области текущего проекта показаны списком. Нажмите на область, чтобы выбрать её на карте.</div>
+      </section>
+
+      <section class="card editorOnly editorCollapsible" id="imagesCard">
         <h2>Снимки в проекте</h2>
         <div id="imagesList"></div>
+      </section>
+
+      <section class="card editorOnly" id="dangerCard">
+        <details>
+          <summary>Опасные действия</summary>
+          <button id="replaceImageBtn" class="danger">Заменить файл выбранного снимка</button>
+          <div class="hint">Эта кнопка меняет изображение внутри уже существующего снимка. Обычная загрузка выше так не делает.</div>
+        </details>
       </section>
     </aside>
   </main>
@@ -864,6 +1105,11 @@ const state = {
   mode: null,
   interfaceMode: 'view',
   currentImageDraft: null,
+  afsImage: null,
+  afsViewOnly: false,
+  afsMbtilesLayer: null,
+  afsMbtilesDb: null,
+  multiPendingPhoto: null,
   drawing: { type: null, points: [], markers: [], line: null },
   results: [],
   mapRefMarkers: [],
@@ -928,6 +1174,32 @@ const miniView = {
 
 const els = {
   status: document.getElementById('status'),
+  editorStatus: document.getElementById('editorStatus'),
+  multiStatus: document.getElementById('multiStatus'),
+  multiImageInput: document.getElementById('multiImageInput'),
+  multiImageSelect: document.getElementById('multiImageSelect'),
+  multiImageName: document.getElementById('multiImageName'),
+  multiImageFileName: document.getElementById('multiImageFileName'),
+  multiOpacityRange: document.getElementById('multiOpacityRange'),
+  multiOpacityValue: document.getElementById('multiOpacityValue'),
+  multiRotationInput: document.getElementById('multiRotationInput'),
+  multiRotateLeftBtn: document.getElementById('multiRotateLeftBtn'),
+  multiRotateRightBtn: document.getElementById('multiRotateRightBtn'),
+  multiRotationResetBtn: document.getElementById('multiRotationResetBtn'),
+  multiAddPairBtn: document.getElementById('multiAddPairBtn'),
+  multiMetrics: document.getElementById('multiMetrics'),
+  multiPointsList: document.getElementById('multiPointsList'),
+  multiBaseLayerSelect: document.getElementById('multiBaseLayerSelect'),
+  multiCoordInput: document.getElementById('multiCoordInput'),
+  multiCoordLat: document.getElementById('multiCoordLat'),
+  multiCoordLng: document.getElementById('multiCoordLng'),
+  multiCursorCoords: document.getElementById('multiCursorCoords'),
+  multiExportFormat: document.getElementById('multiExportFormat'),
+  multiExportSize: document.getElementById('multiExportSize'),
+  multiExportBtn: document.getElementById('multiExportBtn'),
+  multiOpenInput: document.getElementById('multiOpenInput'),
+  multiReturnEditBtn: document.getElementById('multiReturnEditBtn'),
+  multiExportStatus: document.getElementById('multiExportStatus'),
   imageInput: document.getElementById('imageInput'),
   photoFolderInput: document.getElementById('photoFolderInput'),
   folderPhotoSelect: document.getElementById('folderPhotoSelect'),
@@ -945,6 +1217,8 @@ const els = {
   imageSelect: document.getElementById('imageSelect'),
   results: document.getElementById('results'),
   imagesList: document.getElementById('imagesList'),
+  projectAreasCount: document.getElementById('projectAreasCount'),
+  projectAreasList: document.getElementById('projectAreasList'),
   selectedFileComment: document.getElementById('selectedFileComment'),
   selectedMiniViewport: document.getElementById('selectedMiniViewport'),
   selectedMiniLayer: document.getElementById('selectedMiniLayer'),
@@ -967,6 +1241,10 @@ const els = {
   coordLat: document.getElementById('coordLat'),
   coordLng: document.getElementById('coordLng'),
   cursorCoords: document.getElementById('cursorCoords'),
+  viewCoordInput: document.getElementById('viewCoordInput'),
+  viewCoordLat: document.getElementById('viewCoordLat'),
+  viewCoordLng: document.getElementById('viewCoordLng'),
+  viewCursorCoords: document.getElementById('viewCursorCoords'),
   polygonName: document.getElementById('polygonName'),
   showSavedPolygonsCheck: document.getElementById('showSavedPolygonsCheck'),
   createFreeAreaCheck: document.getElementById('createFreeAreaCheck'),
@@ -981,6 +1259,7 @@ const els = {
   resetFiltersBtn: document.getElementById('resetFiltersBtn'),
   editModeBtn: document.getElementById('editModeBtn'),
   viewModeBtn: document.getElementById('viewModeBtn'),
+  multiModeBtn: document.getElementById('multiModeBtn'),
   localDataBtn: document.getElementById('localDataBtn'),
   remoteDataBtn: document.getElementById('remoteDataBtn'),
   remoteBasePathInput: document.getElementById('remoteBasePathInput'),
@@ -998,7 +1277,9 @@ function uid(prefix) {
 }
 
 function setStatus(text) {
-  els.status.textContent = text;
+  if (els.status) els.status.textContent = text;
+  if (els.editorStatus) els.editorStatus.textContent = text;
+  if (els.multiStatus) els.multiStatus.textContent = text;
 }
 
 function escapeHtml(text) {
@@ -1164,22 +1445,36 @@ function filtersChanged() {
 }
 
 function setInterfaceMode(mode) {
-  if (mode !== 'view' && state.dataSourceMode === 'remote') {
+  const requested = mode === 'multi' ? 'multi' : mode === 'edit' ? 'edit' : 'view';
+  if (requested === 'edit' && state.dataSourceMode === 'remote') {
     state.interfaceMode = 'view';
     setStatus('Готовая привязка из GitHub открывается только для просмотра. Для редактирования переключитесь в «Мой проект».');
   } else {
-    state.interfaceMode = mode === 'view' ? 'view' : 'edit';
+    state.interfaceMode = requested;
   }
   document.body.classList.toggle('view-mode', state.interfaceMode === 'view');
-  document.body.classList.toggle('edit-mode', state.interfaceMode !== 'view');
+  document.body.classList.toggle('edit-mode', state.interfaceMode === 'edit');
+  document.body.classList.toggle('multi-mode', state.interfaceMode === 'multi');
+  document.body.classList.toggle('afs-view-mode', state.interfaceMode === 'multi' && state.afsViewOnly);
   els.editModeBtn.classList.toggle('active', state.interfaceMode === 'edit');
   els.viewModeBtn.classList.toggle('active', state.interfaceMode === 'view');
-  if (state.interfaceMode === 'view') {
-    cancelDrawing(false);
-    state.mode = null;
-    els.photoViewport.classList.remove('pointMode');
-    renderAll(false);
+  if (els.multiModeBtn) els.multiModeBtn.classList.toggle('active', state.interfaceMode === 'multi');
+  cancelDrawing(false);
+  state.mode = null;
+  state.multiPendingPhoto = null;
+  els.photoViewport.classList.remove('pointMode');
+  if (state.interfaceMode === 'multi') {
+    state.selectedPolygonId = null;
+    if (state.afsMbtilesLayer && !map.hasLayer(state.afsMbtilesLayer)) state.afsMbtilesLayer.addTo(map);
+    setStatus(state.afsViewOnly
+      ? 'Открыта сохранённая привязка АФС. На карте показывается только привязанный снимок.'
+      : 'Привязка аэрофотосъёмки: загрузите отдельный снимок и добавьте минимум четыре пары точек.');
+  } else if (state.afsMbtilesLayer && map.hasLayer(state.afsMbtilesLayer)) {
+    map.removeLayer(state.afsMbtilesLayer);
   }
+  renderAll(false);
+  rebuildPhotoMarks();
+  rebuildMapRefMarkersForImage(activePhotoImage());
   setTimeout(() => {
     map.invalidateSize();
     renderImages(Boolean(state.selectedPolygonId));
@@ -1210,6 +1505,10 @@ function setDataSourceMode(mode) {
 
 els.editModeBtn.onclick = () => setInterfaceMode('edit');
 els.viewModeBtn.onclick = () => setInterfaceMode('view');
+if (els.multiModeBtn) els.multiModeBtn.onclick = () => {
+  if (state.dataSourceMode !== 'local') setDataSourceMode('local');
+  setInterfaceMode('multi');
+};
 els.localDataBtn.onclick = () => setDataSourceMode('local');
 els.remoteDataBtn.onclick = () => setDataSourceMode('remote');
 
@@ -1221,19 +1520,21 @@ function setBaseLayer(key) {
   if (!map.hasLayer(baseLayers[normalized])) baseLayers[normalized].addTo(map);
   state.mapBaseLayer = normalized;
   if (els.baseLayerSelect) els.baseLayerSelect.value = normalized;
+  if (els.multiBaseLayerSelect) els.multiBaseLayerSelect.value = normalized;
 }
 
 map.on('baselayerchange', (ev) => {
   state.mapBaseLayer = ev.name === 'Спутник' ? 'satellite' : 'street';
   if (els.baseLayerSelect) els.baseLayerSelect.value = state.mapBaseLayer;
+  if (els.multiBaseLayerSelect) els.multiBaseLayerSelect.value = state.mapBaseLayer;
 });
 
 function formatCoord(value) {
   return Number(value).toFixed(6);
 }
 
-function parseCoordPair() {
-  const raw = (els.coordInput.value || '').trim();
+function parseCoordPair(inputEl, latEl, lngEl) {
+  const raw = (inputEl?.value || '').trim();
   let lat;
   let lng;
   if (raw) {
@@ -1244,8 +1545,8 @@ function parseCoordPair() {
     }
   }
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-    lat = Number(String(els.coordLat.value || '').replace(',', '.'));
-    lng = Number(String(els.coordLng.value || '').replace(',', '.'));
+    lat = Number(String(latEl?.value || '').replace(',', '.'));
+    lng = Number(String(lngEl?.value || '').replace(',', '.'));
   }
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) throw new Error('Введите координаты в формате: 54.352, 18.646');
   if (lat < -90 || lat > 90) throw new Error('Широта должна быть от -90 до 90.');
@@ -1267,15 +1568,18 @@ function setCoordinateMarker(lat, lng, moveMap = true) {
     coordinateMarker.setLatLng(latlng);
   }
   coordinateMarker.bindTooltip(`${formatCoord(lat)}, ${formatCoord(lng)}`, { permanent: false });
-  els.coordLat.value = formatCoord(lat);
-  els.coordLng.value = formatCoord(lng);
-  els.coordInput.value = `${formatCoord(lat)}, ${formatCoord(lng)}`;
+  if (els.coordLat) els.coordLat.value = formatCoord(lat);
+  if (els.coordLng) els.coordLng.value = formatCoord(lng);
+  if (els.coordInput) els.coordInput.value = `${formatCoord(lat)}, ${formatCoord(lng)}`;
+  if (els.viewCoordLat) els.viewCoordLat.value = formatCoord(lat);
+  if (els.viewCoordLng) els.viewCoordLng.value = formatCoord(lng);
+  if (els.viewCoordInput) els.viewCoordInput.value = `${formatCoord(lat)}, ${formatCoord(lng)}`;
   if (moveMap) map.setView(latlng, Math.max(map.getZoom(), 16));
 }
 
-function goToCoordinates() {
+function goToCoordinatesFrom(inputEl, latEl, lngEl) {
   try {
-    const c = parseCoordPair();
+    const c = parseCoordPair(inputEl, latEl, lngEl);
     setCoordinateMarker(c.lat, c.lng, true);
     setStatus('Карта наведена на координаты: ' + formatCoord(c.lat) + ', ' + formatCoord(c.lng));
   } catch (e) {
@@ -1283,25 +1587,48 @@ function goToCoordinates() {
   }
 }
 
+function goToCoordinates() {
+  goToCoordinatesFrom(els.coordInput, els.coordLat, els.coordLng);
+}
+
+function goToViewCoordinates() {
+  goToCoordinatesFrom(els.viewCoordInput, els.viewCoordLat, els.viewCoordLng);
+}
+
 els.baseLayerSelect.addEventListener('change', () => setBaseLayer(els.baseLayerSelect.value));
-document.getElementById('goToCoordBtn').onclick = goToCoordinates;
-els.coordInput.addEventListener('keydown', ev => { if (ev.key === 'Enter') goToCoordinates(); });
-els.coordLat.addEventListener('keydown', ev => { if (ev.key === 'Enter') goToCoordinates(); });
-els.coordLng.addEventListener('keydown', ev => { if (ev.key === 'Enter') goToCoordinates(); });
-document.getElementById('useMapCenterBtn').onclick = () => {
+function useMapCenterCoordinates() {
   const c = map.getCenter();
   setCoordinateMarker(c.lat, c.lng, false);
   setStatus('В поля координат записан текущий центр карты.');
-};
-document.getElementById('clearCoordMarkerBtn').onclick = () => {
+}
+
+function clearCoordinateMarker() {
   if (coordinateMarker) {
     coordinateMarker.remove();
     coordinateMarker = null;
   }
   setStatus('Координатная метка убрана.');
-};
+}
+
+document.getElementById('goToCoordBtn').onclick = goToCoordinates;
+els.coordInput.addEventListener('keydown', ev => { if (ev.key === 'Enter') goToCoordinates(); });
+els.coordLat.addEventListener('keydown', ev => { if (ev.key === 'Enter') goToCoordinates(); });
+els.coordLng.addEventListener('keydown', ev => { if (ev.key === 'Enter') goToCoordinates(); });
+document.getElementById('useMapCenterBtn').onclick = useMapCenterCoordinates;
+document.getElementById('clearCoordMarkerBtn').onclick = clearCoordinateMarker;
+
+document.getElementById('viewGoToCoordBtn').onclick = goToViewCoordinates;
+els.viewCoordInput.addEventListener('keydown', ev => { if (ev.key === 'Enter') goToViewCoordinates(); });
+els.viewCoordLat.addEventListener('keydown', ev => { if (ev.key === 'Enter') goToViewCoordinates(); });
+els.viewCoordLng.addEventListener('keydown', ev => { if (ev.key === 'Enter') goToViewCoordinates(); });
+document.getElementById('viewUseMapCenterBtn').onclick = useMapCenterCoordinates;
+document.getElementById('viewClearCoordMarkerBtn').onclick = clearCoordinateMarker;
+
 map.on('mousemove', ev => {
-  if (els.cursorCoords) els.cursorCoords.textContent = 'Курсор: ' + formatCoord(ev.latlng.lat) + ', ' + formatCoord(ev.latlng.lng);
+  const text = 'Курсор: ' + formatCoord(ev.latlng.lat) + ', ' + formatCoord(ev.latlng.lng);
+  if (els.cursorCoords) els.cursorCoords.textContent = text;
+  if (els.viewCursorCoords) els.viewCursorCoords.textContent = text;
+  if (els.multiCursorCoords) els.multiCursorCoords.textContent = text;
 });
 
 const REMOTE_REGIONS_DIR = 'data/regions';
@@ -1553,6 +1880,16 @@ function normalizeProjectImage(img, idx = 0) {
     imageUrl: img.imageUrl || img.url || '',
     dataUrl: img.dataUrl || ''
   });
+  out.multiControlPoints = Array.isArray(img.multiControlPoints) ? img.multiControlPoints.map((p, pointIndex) => ({
+    id: String(p.id || ('cp_' + pointIndex)),
+    img: p.img && Number.isFinite(Number(p.img.x)) && Number.isFinite(Number(p.img.y))
+      ? { x: Number(p.img.x), y: Number(p.img.y) }
+      : null,
+    map: Array.isArray(p.map) && Number.isFinite(Number(p.map[0])) && Number.isFinite(Number(p.map[1]))
+      ? [Number(p.map[0]), Number(p.map[1])]
+      : null,
+    residualMeters: Number.isFinite(Number(p.residualMeters)) ? Number(p.residualMeters) : null
+  })).filter(p => p.img && p.map) : [];
   return out;
 }
 
@@ -1561,6 +1898,7 @@ function imageHasDisplaySource(img) {
 }
 
 function activePhotoImage() {
+  if (state.interfaceMode === 'multi') return state.afsImage || null;
   if (state.currentImageDraft) return state.currentImageDraft;
   if (state.selectedImageId) return state.images.find(x => x.id === state.selectedImageId) || null;
   return null;
@@ -1579,7 +1917,7 @@ function cloneMapPoint(pt) {
 }
 
 function hasAnyGeorefPoints(img) {
-  return Boolean(img && (img.imgPt1 || img.imgPt2 || img.mapPt1 || img.mapPt2));
+  return Boolean(img && (img.imgPt1 || img.imgPt2 || img.mapPt1 || img.mapPt2 || (Array.isArray(img.multiControlPoints) && img.multiControlPoints.length)));
 }
 
 function hasFullGeorefPoints(img) {
@@ -1592,9 +1930,20 @@ function copyGeorefPointsFromTemplate(target, template) {
   target.imgPt2 = cloneNormPoint(template.imgPt2);
   target.mapPt1 = cloneMapPoint(template.mapPt1);
   target.mapPt2 = cloneMapPoint(template.mapPt2);
+  target.multiControlPoints = Array.isArray(template.multiControlPoints) ? template.multiControlPoints.map(p => ({
+    id: uid('cp'),
+    img: cloneNormPoint(p.img),
+    map: cloneMapPoint(p.map),
+    residualMeters: null
+  })) : [];
 }
 
 function recomputeGeorefIfPossible(img) {
+  if (Array.isArray(img.multiControlPoints) && img.multiControlPoints.length >= 4 && (img.georef?.type === 'projective' || img.georef?.type === 'tps')) {
+    img.georef = computeThinPlateSplineGeoref(img);
+    img.afsPreview = null;
+    return true;
+  }
   if (!hasFullGeorefPoints(img)) return false;
   img.georef = computeGeoref(img);
   return true;
@@ -1670,6 +2019,81 @@ function selectedCommentText() {
   return imageMetadataText(img);
 }
 
+function normalizePhotoRotation(value) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return 0;
+  let normalized = ((numeric + 180) % 360 + 360) % 360 - 180;
+  if (Math.abs(normalized) < 1e-9) normalized = 0;
+  return normalized;
+}
+
+function activePhotoRotation(img = activePhotoImage()) {
+  if (state.interfaceMode !== 'multi' || !img) return 0;
+  return normalizePhotoRotation(img.multiRotationDeg || 0);
+}
+
+function rotatedPhotoGeometry(img = activePhotoImage()) {
+  const width = Number(img?.width) || 0;
+  const height = Number(img?.height) || 0;
+  const angleDeg = activePhotoRotation(img);
+  const angle = angleDeg * Math.PI / 180;
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+  const boxWidth = Math.abs(width * cos) + Math.abs(height * sin);
+  const boxHeight = Math.abs(width * sin) + Math.abs(height * cos);
+  const centerX = width / 2;
+  const centerY = height / 2;
+  const translateX = boxWidth / 2 - (cos * centerX - sin * centerY);
+  const translateY = boxHeight / 2 - (sin * centerX + cos * centerY);
+  return { width, height, angleDeg, angle, cos, sin, boxWidth, boxHeight, centerX, centerY, translateX, translateY };
+}
+
+function photoPixelToRotatedPoint(x, y, img = activePhotoImage()) {
+  const geometry = rotatedPhotoGeometry(img);
+  return {
+    x: geometry.cos * x - geometry.sin * y + geometry.translateX,
+    y: geometry.sin * x + geometry.cos * y + geometry.translateY
+  };
+}
+
+function rotatedPointToPhotoPixel(x, y, img = activePhotoImage()) {
+  const geometry = rotatedPhotoGeometry(img);
+  const centeredX = x - geometry.boxWidth / 2;
+  const centeredY = y - geometry.boxHeight / 2;
+  return {
+    x: geometry.cos * centeredX + geometry.sin * centeredY + geometry.centerX,
+    y: -geometry.sin * centeredX + geometry.cos * centeredY + geometry.centerY
+  };
+}
+
+function viewportPointToPhotoPixel(clientX, clientY, img = activePhotoImage()) {
+  const rect = els.photoViewport.getBoundingClientRect();
+  const viewportX = clientX - rect.left;
+  const viewportY = clientY - rect.top;
+  const geometry = rotatedPhotoGeometry(img);
+  const scale = photoView.scale;
+  const a = scale * geometry.cos;
+  const b = scale * geometry.sin;
+  const c = -scale * geometry.sin;
+  const d = scale * geometry.cos;
+  const e = photoView.offsetX + scale * geometry.translateX;
+  const f = photoView.offsetY + scale * geometry.translateY;
+  const determinant = a * d - b * c;
+  if (!Number.isFinite(determinant) || Math.abs(determinant) < 1e-12) return null;
+  const dx = viewportX - e;
+  const dy = viewportY - f;
+  return {
+    x: (d * dx - c * dy) / determinant,
+    y: (-b * dx + a * dy) / determinant
+  };
+}
+
+function updatePhotoInfoText(img) {
+  if (!img) return;
+  const rotation = activePhotoRotation(img);
+  els.photoInfo.textContent = img.name + ' · ' + img.width + '×' + img.height + (rotation ? ' · поворот ' + rotation + '°' : '');
+}
+
 function showPhotoImage(img, keepView = false) {
   if (!img) {
     els.photoImg.style.display = 'none';
@@ -1696,7 +2120,7 @@ function showPhotoImage(img, keepView = false) {
   els.photoImg.style.height = img.height + 'px';
   els.photoLayer.style.width = img.width + 'px';
   els.photoLayer.style.height = img.height + 'px';
-  els.photoInfo.textContent = img.name + ' · ' + img.width + '×' + img.height;
+  updatePhotoInfoText(img);
   if (!keepView) fitPhotoToViewport();
   else updatePhotoTransform();
 }
@@ -1705,14 +2129,15 @@ function clearPhotoMarks() {
   [...els.photoViewport.querySelectorAll('.photoPoint')].forEach(e => e.remove());
 }
 
-function addPhotoMark(norm, label) {
+function addPhotoMark(norm, label, extraClass = '') {
   const img = activePhotoImage();
   if (!img) return;
   const p = document.createElement('div');
-  p.className = 'photoPoint';
+  p.className = 'photoPoint' + (extraClass ? ' ' + extraClass : '');
   p.dataset.label = label;
-  p.style.left = (photoView.offsetX + norm.x * img.width * photoView.scale) + 'px';
-  p.style.top = (photoView.offsetY + norm.y * img.height * photoView.scale) + 'px';
+  const rotated = photoPixelToRotatedPoint(norm.x * img.width, norm.y * img.height, img);
+  p.style.left = (photoView.offsetX + rotated.x * photoView.scale) + 'px';
+  p.style.top = (photoView.offsetY + rotated.y * photoView.scale) + 'px';
   els.photoViewport.appendChild(p);
 }
 
@@ -1720,12 +2145,32 @@ function rebuildPhotoMarks() {
   clearPhotoMarks();
   const d = activePhotoImage();
   if (!d) return;
+  if (state.interfaceMode === 'multi') {
+    if (state.afsViewOnly) return;
+    const points = Array.isArray(d.multiControlPoints) ? d.multiControlPoints : [];
+    points.forEach((point, index) => addPhotoMark(point.img, String(index + 1), 'multiPoint'));
+    if (state.multiPendingPhoto) addPhotoMark(state.multiPendingPhoto, String(points.length + 1) + '?', 'multiPoint');
+    return;
+  }
   if (d.imgPt1) addPhotoMark(d.imgPt1, '1');
   if (d.imgPt2) addPhotoMark(d.imgPt2, '2');
 }
 
 function updatePhotoTransform() {
-  els.photoLayer.style.transform = `translate(${photoView.offsetX}px, ${photoView.offsetY}px) scale(${photoView.scale})`;
+  const img = activePhotoImage();
+  if (img) {
+    const geometry = rotatedPhotoGeometry(img);
+    const scale = photoView.scale;
+    const a = scale * geometry.cos;
+    const b = scale * geometry.sin;
+    const c = -scale * geometry.sin;
+    const d = scale * geometry.cos;
+    const e = photoView.offsetX + scale * geometry.translateX;
+    const f = photoView.offsetY + scale * geometry.translateY;
+    els.photoLayer.style.transform = `matrix(${a}, ${b}, ${c}, ${d}, ${e}, ${f})`;
+  } else {
+    els.photoLayer.style.transform = `translate(${photoView.offsetX}px, ${photoView.offsetY}px) scale(${photoView.scale})`;
+  }
   els.photoZoomRange.value = String(Math.round(photoView.scale * 100));
   rebuildPhotoMarks();
 }
@@ -1735,10 +2180,13 @@ function fitPhotoToViewport() {
   if (!img) return;
   const rect = els.photoViewport.getBoundingClientRect();
   if (rect.width < 10 || rect.height < 10) return;
-  const scale = Math.min(rect.width / img.width, rect.height / img.height) * 0.96;
+  const geometry = rotatedPhotoGeometry(img);
+  const displayWidth = Math.max(1, geometry.boxWidth);
+  const displayHeight = Math.max(1, geometry.boxHeight);
+  const scale = Math.min(rect.width / displayWidth, rect.height / displayHeight) * 0.96;
   photoView.scale = Math.max(0.05, Math.min(8, scale));
-  photoView.offsetX = (rect.width - img.width * photoView.scale) / 2;
-  photoView.offsetY = (rect.height - img.height * photoView.scale) / 2;
+  photoView.offsetX = (rect.width - displayWidth * photoView.scale) / 2;
+  photoView.offsetY = (rect.height - displayHeight * photoView.scale) / 2;
   updatePhotoTransform();
 }
 
@@ -1771,7 +2219,7 @@ els.photoViewport.addEventListener('mousedown', (ev) => {
   photoView.dragStartY = ev.clientY;
   photoView.dragOffsetX = photoView.offsetX;
   photoView.dragOffsetY = photoView.offsetY;
-  els.photoViewport.style.cursor = state.mode === 'imgPt1' || state.mode === 'imgPt2' ? 'crosshair' : 'grabbing';
+  els.photoViewport.style.cursor = state.mode === 'imgPt1' || state.mode === 'imgPt2' || state.mode === 'multiPhoto' ? 'crosshair' : 'grabbing';
 });
 
 window.addEventListener('mousemove', (ev) => {
@@ -1779,7 +2227,7 @@ window.addEventListener('mousemove', (ev) => {
   const dx = ev.clientX - photoView.dragStartX;
   const dy = ev.clientY - photoView.dragStartY;
   if (Math.hypot(dx, dy) > 3) photoView.moved = true;
-  if (state.mode === 'imgPt1' || state.mode === 'imgPt2') return;
+  if (state.mode === 'imgPt1' || state.mode === 'imgPt2' || state.mode === 'multiPhoto') return;
   photoView.offsetX = photoView.dragOffsetX + dx;
   photoView.offsetY = photoView.dragOffsetY + dy;
   updatePhotoTransform();
@@ -1787,21 +2235,33 @@ window.addEventListener('mousemove', (ev) => {
 
 window.addEventListener('mouseup', () => {
   photoView.dragging = false;
-  els.photoViewport.style.cursor = state.mode === 'imgPt1' || state.mode === 'imgPt2' ? 'crosshair' : 'grab';
+  els.photoViewport.style.cursor = state.mode === 'imgPt1' || state.mode === 'imgPt2' || state.mode === 'multiPhoto' ? 'crosshair' : 'grab';
 });
 
 els.photoViewport.addEventListener('click', (ev) => {
   const d = state.currentImageDraft || activePhotoImage();
-  if (!d || (state.mode !== 'imgPt1' && state.mode !== 'imgPt2')) return;
+  if (!d || !['imgPt1', 'imgPt2', 'multiPhoto'].includes(state.mode)) return;
   if (photoView.moved) return;
-  const rect = els.photoViewport.getBoundingClientRect();
-  const x = (ev.clientX - rect.left - photoView.offsetX) / photoView.scale;
-  const y = (ev.clientY - rect.top - photoView.offsetY) / photoView.scale;
+  const originalPoint = viewportPointToPhotoPixel(ev.clientX, ev.clientY, d);
+  if (!originalPoint) {
+    setStatus('Не удалось определить координаты точки на повернутом снимке. Выполните «Вписать фото» и повторите попытку.');
+    return;
+  }
+  const x = originalPoint.x;
+  const y = originalPoint.y;
   if (x < 0 || y < 0 || x > d.width || y > d.height) {
     setStatus('Точка поставлена вне границ снимка. Приблизьте или сдвиньте фото и поставьте точку внутри изображения.');
     return;
   }
   const norm = { x: x / d.width, y: y / d.height };
+  if (state.mode === 'multiPhoto') {
+    state.multiPendingPhoto = norm;
+    state.mode = 'multiMap';
+    els.photoViewport.classList.remove('pointMode');
+    rebuildPhotoMarks();
+    setStatus('Точка на фото задана. Теперь кликните тот же ориентир на карте.');
+    return;
+  }
   if (state.mode === 'imgPt1') d.imgPt1 = norm;
   if (state.mode === 'imgPt2') d.imgPt2 = norm;
   state.mode = null;
@@ -1890,6 +2350,7 @@ async function loadImageFileAsDraft(file, template = null) {
     imgPt2: null,
     mapPt1: null,
     mapPt2: null,
+    multiControlPoints: [],
     georef: null,
     opacity: clampOpacity(Number(els.overlayOpacityRange.value) / 100),
     comment: els.imageComment.value || '',
@@ -1913,7 +2374,9 @@ async function loadImageFileAsDraft(file, template = null) {
   if (template && hasAnyGeorefPoints(template)) {
     setStatus('Новый снимок создан отдельно. Точки привязки скопированы с выбранного снимка. Старые области и старый файл не изменены.');
   } else {
-    setStatus('Изображение загружено. Укажите две точки на фото и две точки на карте.');
+    setStatus(state.interfaceMode === 'multi'
+      ? 'Изображение загружено. Добавьте минимум четыре пары точек, распределяя их по всему снимку.'
+      : 'Изображение загружено. Укажите две точки на фото и две точки на карте.');
   }
 }
 
@@ -2038,11 +2501,36 @@ function clearMapRefMarkers() {
 function rebuildMapRefMarkersForImage(img) {
   clearMapRefMarkers();
   if (!img || state.interfaceMode === 'view') return;
+  if (state.interfaceMode === 'multi') {
+    if (state.afsViewOnly) return;
+    const points = Array.isArray(img.multiControlPoints) ? img.multiControlPoints : [];
+    points.forEach((point, index) => addMapRefMarker(L.latLng(point.map[0], point.map[1]), 'Точка ' + (index + 1)));
+    return;
+  }
   if (Array.isArray(img.mapPt1)) addMapRefMarker(L.latLng(img.mapPt1[0], img.mapPt1[1]), 'Карта 1');
   if (Array.isArray(img.mapPt2)) addMapRefMarker(L.latLng(img.mapPt2[0], img.mapPt2[1]), 'Карта 2');
 }
 
 map.on('click', (ev) => {
+  if (state.mode === 'multiMap') {
+    const d = state.currentImageDraft || activePhotoImage();
+    if (!d || !state.multiPendingPhoto) return setStatus('Сначала поставьте точку на фото.');
+    if (!Array.isArray(d.multiControlPoints)) d.multiControlPoints = [];
+    d.multiControlPoints.push({
+      id: uid('cp'),
+      img: cloneNormPoint(state.multiPendingPhoto),
+      map: [ev.latlng.lat, ev.latlng.lng],
+      residualMeters: null
+    });
+    d.georef = null;
+    state.multiPendingPhoto = null;
+    state.mode = null;
+    rebuildPhotoMarks();
+    rebuildMapRefMarkersForImage(d);
+    renderMultiPanel();
+    setStatus('Пара точек добавлена. Всего пар: ' + d.multiControlPoints.length + '.');
+    return;
+  }
   if (state.mode === 'mapPt1' || state.mode === 'mapPt2') {
     const d = state.currentImageDraft || activePhotoImage();
     if (!d) return setStatus('Сначала загрузите изображение.');
@@ -2056,6 +2544,294 @@ map.on('click', (ev) => {
   }
   if (state.drawing.type) addDrawingPoint(ev.latlng);
 });
+
+function matrix3Multiply(a, b) {
+  const out = new Array(9).fill(0);
+  for (let r = 0; r < 3; r++) {
+    for (let c = 0; c < 3; c++) {
+      for (let k = 0; k < 3; k++) out[r * 3 + c] += a[r * 3 + k] * b[k * 3 + c];
+    }
+  }
+  return out;
+}
+
+function matrix3Inverse(m) {
+  const [a,b,c,d,e,f,g,h,i] = m.map(Number);
+  const A = e*i - f*h;
+  const B = c*h - b*i;
+  const C = b*f - c*e;
+  const D = f*g - d*i;
+  const E = a*i - c*g;
+  const F = c*d - a*f;
+  const G = d*h - e*g;
+  const H = b*g - a*h;
+  const I = a*e - b*d;
+  const det = a*A + b*D + c*G;
+  if (!Number.isFinite(det) || Math.abs(det) < 1e-14) throw new Error('Матрица преобразования вырождена. Распределите точки по площади снимка.');
+  return [A,B,C,D,E,F,G,H,I].map(v => v / det);
+}
+
+function transformPointByMatrix(m, x, y) {
+  const w = m[6] * x + m[7] * y + m[8];
+  if (!Number.isFinite(w) || Math.abs(w) < 1e-12) return null;
+  return {
+    x: (m[0] * x + m[1] * y + m[2]) / w,
+    y: (m[3] * x + m[4] * y + m[5]) / w
+  };
+}
+
+function solveLinearSystem(a, b) {
+  const n = b.length;
+  const m = a.map((row, r) => row.map(Number).concat(Number(b[r])));
+  for (let col = 0; col < n; col++) {
+    let pivot = col;
+    for (let r = col + 1; r < n; r++) {
+      if (Math.abs(m[r][col]) > Math.abs(m[pivot][col])) pivot = r;
+    }
+    if (Math.abs(m[pivot][col]) < 1e-12) throw new Error('Точки не позволяют устойчиво рассчитать преобразование. Не располагайте их на одной линии.');
+    [m[col], m[pivot]] = [m[pivot], m[col]];
+    const div = m[col][col];
+    for (let c = col; c <= n; c++) m[col][c] /= div;
+    for (let r = 0; r < n; r++) {
+      if (r === col) continue;
+      const factor = m[r][col];
+      if (!factor) continue;
+      for (let c = col; c <= n; c++) m[r][c] -= factor * m[col][c];
+    }
+  }
+  return m.map(row => row[n]);
+}
+
+function normalizationForPoints(points) {
+  const cx = points.reduce((sum, p) => sum + p.x, 0) / points.length;
+  const cy = points.reduce((sum, p) => sum + p.y, 0) / points.length;
+  const avg = points.reduce((sum, p) => sum + Math.hypot(p.x - cx, p.y - cy), 0) / points.length;
+  if (!Number.isFinite(avg) || avg < 1e-9) throw new Error('Опорные точки слишком близко друг к другу.');
+  const scale = Math.SQRT2 / avg;
+  const matrix = [scale, 0, -scale * cx, 0, scale, -scale * cy, 0, 0, 1];
+  return {
+    matrix,
+    inverse: [1 / scale, 0, cx, 0, 1 / scale, cy, 0, 0, 1],
+    points: points.map(p => ({ x: scale * (p.x - cx), y: scale * (p.y - cy) }))
+  };
+}
+
+function fitProjectiveHomography(sourcePoints, targetPoints) {
+  if (sourcePoints.length !== targetPoints.length || sourcePoints.length < 4) {
+    throw new Error('Для проектной привязки нужно минимум четыре пары точек.');
+  }
+  const srcNorm = normalizationForPoints(sourcePoints);
+  const dstNorm = normalizationForPoints(targetPoints);
+  const rows = [];
+  const values = [];
+  for (let index = 0; index < sourcePoints.length; index++) {
+    const { x, y } = srcNorm.points[index];
+    const { x: u, y: v } = dstNorm.points[index];
+    rows.push([x, y, 1, 0, 0, 0, -u * x, -u * y]);
+    values.push(u);
+    rows.push([0, 0, 0, x, y, 1, -v * x, -v * y]);
+    values.push(v);
+  }
+  const ata = Array.from({ length: 8 }, () => new Array(8).fill(0));
+  const atb = new Array(8).fill(0);
+  rows.forEach((row, r) => {
+    for (let i = 0; i < 8; i++) {
+      atb[i] += row[i] * values[r];
+      for (let j = 0; j < 8; j++) ata[i][j] += row[i] * row[j];
+    }
+  });
+  const h = solveLinearSystem(ata, atb);
+  const normalizedH = [h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7], 1];
+  let result = matrix3Multiply(dstNorm.inverse, matrix3Multiply(normalizedH, srcNorm.matrix));
+  const divisor = result[8];
+  if (!Number.isFinite(divisor) || Math.abs(divisor) < 1e-14) throw new Error('Не удалось нормализовать проектное преобразование.');
+  result = result.map(v => v / divisor);
+  if (!result.every(Number.isFinite)) throw new Error('Получено некорректное проектное преобразование.');
+  return result;
+}
+
+function computeProjectiveGeoref(img) {
+  const controls = Array.isArray(img.multiControlPoints) ? img.multiControlPoints : [];
+  if (controls.length < 4) throw new Error('Добавьте минимум четыре пары точек.');
+  if (!img.width || !img.height) throw new Error('Не определён размер снимка.');
+  const baseZoom = map.getZoom();
+  const sourcePoints = controls.map(p => ({ x: p.img.x * img.width, y: p.img.y * img.height }));
+  const targetPoints = controls.map(p => {
+    const projected = map.project(L.latLng(p.map[0], p.map[1]), baseZoom);
+    return { x: projected.x, y: projected.y };
+  });
+  const matrix = fitProjectiveHomography(sourcePoints, targetPoints);
+  const errors = controls.map((point, index) => {
+    const predicted = transformPointByMatrix(matrix, sourcePoints[index].x, sourcePoints[index].y);
+    if (!predicted) return Infinity;
+    const predictedLatLng = map.unproject(L.point(predicted.x, predicted.y), baseZoom);
+    return map.distance(predictedLatLng, L.latLng(point.map[0], point.map[1]));
+  });
+  if (!errors.every(Number.isFinite)) throw new Error('Не удалось вычислить ошибки контрольных точек.');
+  controls.forEach((point, index) => { point.residualMeters = errors[index]; });
+  const rmsMeters = Math.sqrt(errors.reduce((sum, value) => sum + value * value, 0) / errors.length);
+  const maxMeters = Math.max(...errors);
+  return {
+    type: 'projective',
+    baseZoom,
+    matrix,
+    pointCount: controls.length,
+    rmsMeters,
+    maxMeters
+  };
+}
+
+
+function thinPlateKernel(r2) {
+  if (!Number.isFinite(r2) || r2 <= 1e-18) return 0;
+  return r2 * Math.log(r2);
+}
+
+function fitThinPlateSpline(sourcePoints, targetPoints) {
+  if (sourcePoints.length !== targetPoints.length || sourcePoints.length < 4) {
+    throw new Error('Для многоточечной деформации нужно минимум четыре пары точек.');
+  }
+  const n = sourcePoints.length;
+  for (let i = 0; i < n; i++) {
+    for (let j = i + 1; j < n; j++) {
+      if (Math.hypot(sourcePoints[i].x - sourcePoints[j].x, sourcePoints[i].y - sourcePoints[j].y) < 1e-6) {
+        throw new Error('На снимке есть совпадающие контрольные точки. Удалите одну из них.');
+      }
+    }
+  }
+  const size = n + 3;
+  const matrix = Array.from({ length: size }, () => new Array(size).fill(0));
+  const valuesX = new Array(size).fill(0);
+  const valuesY = new Array(size).fill(0);
+  const regularization = 1e-12;
+  for (let i = 0; i < n; i++) {
+    for (let j = 0; j < n; j++) {
+      const dx = sourcePoints[i].x - sourcePoints[j].x;
+      const dy = sourcePoints[i].y - sourcePoints[j].y;
+      matrix[i][j] = thinPlateKernel(dx * dx + dy * dy);
+    }
+    matrix[i][i] += regularization;
+    matrix[i][n] = 1;
+    matrix[i][n + 1] = sourcePoints[i].x;
+    matrix[i][n + 2] = sourcePoints[i].y;
+    matrix[n][i] = 1;
+    matrix[n + 1][i] = sourcePoints[i].x;
+    matrix[n + 2][i] = sourcePoints[i].y;
+    valuesX[i] = targetPoints[i].x;
+    valuesY[i] = targetPoints[i].y;
+  }
+  const solutionX = solveLinearSystem(matrix, valuesX);
+  const solutionY = solveLinearSystem(matrix.map(row => row.slice()), valuesY);
+  return {
+    sourcePoints: sourcePoints.map(point => ({ x: point.x, y: point.y })),
+    weightsX: solutionX.slice(0, n),
+    weightsY: solutionY.slice(0, n),
+    affineX: solutionX.slice(n),
+    affineY: solutionY.slice(n)
+  };
+}
+
+function transformPointByThinPlateSpline(georef, normalizedX, normalizedY) {
+  const points = Array.isArray(georef?.sourcePoints) ? georef.sourcePoints : [];
+  if (!points.length) return null;
+  let x = Number(georef.affineX?.[0]) + Number(georef.affineX?.[1]) * normalizedX + Number(georef.affineX?.[2]) * normalizedY;
+  let y = Number(georef.affineY?.[0]) + Number(georef.affineY?.[1]) * normalizedX + Number(georef.affineY?.[2]) * normalizedY;
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+  for (let i = 0; i < points.length; i++) {
+    const dx = normalizedX - Number(points[i].x);
+    const dy = normalizedY - Number(points[i].y);
+    const kernel = thinPlateKernel(dx * dx + dy * dy);
+    x += Number(georef.weightsX?.[i]) * kernel;
+    y += Number(georef.weightsY?.[i]) * kernel;
+  }
+  return Number.isFinite(x) && Number.isFinite(y) ? { x, y } : null;
+}
+
+function computeThinPlateSplineGeoref(img) {
+  const controls = Array.isArray(img.multiControlPoints) ? img.multiControlPoints : [];
+  if (controls.length < 4) throw new Error('Добавьте минимум четыре пары точек.');
+  if (!img.width || !img.height) throw new Error('Не определён размер снимка.');
+  const baseZoom = map.getZoom();
+  const sourcePoints = controls.map(point => ({ x: Number(point.img.x), y: Number(point.img.y) }));
+  const targetPoints = controls.map(point => {
+    const projected = map.project(L.latLng(point.map[0], point.map[1]), baseZoom);
+    return { x: projected.x, y: projected.y };
+  });
+  const fitted = fitThinPlateSpline(sourcePoints, targetPoints);
+  const georef = {
+    type: 'tps',
+    baseZoom,
+    pointCount: controls.length,
+    sourcePoints: fitted.sourcePoints,
+    weightsX: fitted.weightsX,
+    weightsY: fitted.weightsY,
+    affineX: fitted.affineX,
+    affineY: fitted.affineY,
+    rmsMeters: 0,
+    maxMeters: 0
+  };
+  const errors = controls.map((point, index) => {
+    const predicted = transformPointByThinPlateSpline(georef, sourcePoints[index].x, sourcePoints[index].y);
+    if (!predicted) return Infinity;
+    const predictedLatLng = map.unproject(L.point(predicted.x, predicted.y), baseZoom);
+    return map.distance(predictedLatLng, L.latLng(point.map[0], point.map[1]));
+  });
+  if (!errors.every(Number.isFinite)) throw new Error('Не удалось вычислить ошибки контрольных точек.');
+  controls.forEach((point, index) => { point.residualMeters = errors[index]; });
+  georef.rmsMeters = Math.sqrt(errors.reduce((sum, value) => sum + value * value, 0) / errors.length);
+  georef.maxMeters = Math.max(...errors);
+  return georef;
+}
+
+function afsMapPixelToWorld(img, x, y) {
+  if (!img?.georef) return null;
+  if (img.georef.type === 'tps') {
+    return transformPointByThinPlateSpline(img.georef, x / img.width, y / img.height);
+  }
+  if (img.georef.type === 'projective') {
+    return transformPointByMatrix(img.georef.matrix, x, y);
+  }
+  return null;
+}
+
+function sampledAfsWorldBounds(img, sampleCount = 36) {
+  const points = [];
+  const count = Math.max(8, Math.min(80, Number(sampleCount) || 36));
+  for (let row = 0; row <= count; row++) {
+    const y = img.height * row / count;
+    for (let col = 0; col <= count; col++) {
+      const x = img.width * col / count;
+      const point = afsMapPixelToWorld(img, x, y);
+      if (point && Number.isFinite(point.x) && Number.isFinite(point.y)) points.push(point);
+    }
+  }
+  if (!points.length) throw new Error('Не удалось определить границы полного снимка.');
+  const xs = points.map(point => point.x);
+  const ys = points.map(point => point.y);
+  const minX = Math.min(...xs);
+  const maxX = Math.max(...xs);
+  const minY = Math.min(...ys);
+  const maxY = Math.max(...ys);
+  if (maxX - minX < 1 || maxY - minY < 1) throw new Error('Границы привязки слишком малы.');
+  return { minX, minY, maxX, maxY, baseZoom: Number(img.georef.baseZoom) };
+}
+
+function afsWorldBounds(img) {
+  if (img?.georef?.type === 'projective') return projectiveWorldBounds(img);
+  if (img?.georef?.type === 'tps') return sampledAfsWorldBounds(img, 40);
+  throw new Error('Неизвестный тип привязки АФС.');
+}
+
+function projectiveLayerMatrix(georef) {
+  const scale = map.getZoomScale(map.getZoom(), georef.baseZoom);
+  const origin = map.getPixelOrigin();
+  const a = [scale, 0, -origin.x, 0, scale, -origin.y, 0, 0, 1];
+  return matrix3Multiply(a, georef.matrix);
+}
+
+function cssMatrix3dFromHomography(h) {
+  return `matrix3d(${h[0]},${h[3]},0,${h[6]},${h[1]},${h[4]},0,${h[7]},0,0,1,0,${h[2]},${h[5]},0,${h[8]})`;
+}
 
 function computeGeoref(d) {
   const p1 = { x: d.imgPt1.x * d.width, y: d.imgPt1.y * d.height };
@@ -2145,7 +2921,8 @@ function geoImageElement(img) {
 
 function updateImagePosition(img, onlySelected = false) {
   if (!img.georef) return;
-  const src = imageSource(img);
+  const isTps = img.georef.type === 'tps';
+  const src = isTps ? img.afsPreview?.dataUrl : imageSource(img);
   if (!src) {
     const oldEl = imageEls.get(img.id);
     if (oldEl) oldEl.style.display = 'none';
@@ -2157,26 +2934,50 @@ function updateImagePosition(img, onlySelected = false) {
     imageEls.set(img.id, el);
   }
   el.src = src;
+  el.style.opacity = String(clampOpacity(img.opacity));
+  const visible = !onlySelected || img.id === state.selectedImageId;
+  el.style.display = visible ? 'block' : 'none';
+  if (isTps) {
+    const preview = img.afsPreview;
+    if (!preview) {
+      el.style.display = 'none';
+      return;
+    }
+    el.style.width = preview.canvasWidth + 'px';
+    el.style.height = preview.canvasHeight + 'px';
+    const nw = map.unproject(L.point(preview.worldBounds.minX, preview.worldBounds.minY), preview.baseZoom);
+    const topLeft = map.latLngToLayerPoint(nw);
+    const zoomScale = map.getZoomScale(map.getZoom(), preview.baseZoom);
+    const scaleX = zoomScale * (preview.worldBounds.maxX - preview.worldBounds.minX) / preview.canvasWidth;
+    const scaleY = zoomScale * (preview.worldBounds.maxY - preview.worldBounds.minY) / preview.canvasHeight;
+    el.style.transform = `translate(${topLeft.x}px, ${topLeft.y}px) scale(${scaleX}, ${scaleY})`;
+    return;
+  }
   el.style.width = img.width + 'px';
   el.style.height = img.height + 'px';
-  el.style.opacity = String(clampOpacity(img.opacity));
+  if (img.georef.type === 'projective' && Array.isArray(img.georef.matrix) && img.georef.matrix.length === 9) {
+    const layerMatrix = projectiveLayerMatrix(img.georef);
+    el.style.transform = cssMatrix3dFromHomography(layerMatrix);
+    return;
+  }
   const p = map.latLngToLayerPoint(img.georef.topLeftLatLng);
   const baseZoom = typeof img.georef.baseZoom === 'number' ? img.georef.baseZoom : map.getZoom();
   const zoomScale = map.getZoomScale(map.getZoom(), baseZoom);
   const finalScale = img.georef.scale * zoomScale;
-  const visible = !onlySelected || img.id === state.selectedImageId;
-  el.style.display = visible ? 'block' : 'none';
   el.style.transform = `translate(${p.x}px, ${p.y}px) rotate(${img.georef.angle}rad) scale(${finalScale})`;
 }
 
 function renderImages(onlySelected = false) {
+  const visibleImages = state.interfaceMode === 'multi'
+    ? (state.afsImage && state.afsImage.georef ? [state.afsImage] : [])
+    : state.images;
   for (const [id, el] of imageEls) {
-    if (!state.images.find(i => i.id === id)) {
+    if (!visibleImages.find(i => i.id === id)) {
       el.remove();
       imageEls.delete(id);
     }
   }
-  state.images.forEach(img => updateImagePosition(img, onlySelected));
+  visibleImages.forEach(img => updateImagePosition(img, state.interfaceMode === 'multi' ? false : onlySelected));
 }
 
 map.on('zoom move viewreset', () => renderImages(Boolean(state.selectedPolygonId)));
@@ -2327,7 +3128,7 @@ function selectPolygon(id) {
   state.selectedImageId = p ? p.imageId : null;
   const img = state.images.find(x => x.id === state.selectedImageId);
   if (img) showPhotoImage(img, true);
-  renderAll(true);
+  renderAll(state.interfaceMode !== 'edit');
   if (p) map.fitBounds(L.latLngBounds(p.points), { padding: [30, 30] });
 }
 
@@ -2350,6 +3151,7 @@ document.getElementById('deleteSelectedBtn').onclick = () => {
 };
 
 function visiblePolygonsForCurrentMode(onlySelected = false) {
+  if (state.interfaceMode === 'multi') return [];
   if (onlySelected && state.selectedPolygonId) return state.polygons.filter(p => p.id === state.selectedPolygonId);
   if (state.showSavedPolygons && state.interfaceMode === 'edit') return state.polygons;
   if (state.results.length) {
@@ -2377,7 +3179,7 @@ function renderPolygons(onlySelected = false) {
     queryLayer.remove();
     queryLayer = null;
   }
-  if (state.queryPolygon) {
+  if (state.interfaceMode === 'view' && state.queryPolygon) {
     queryLayer = L.polygon(state.queryPolygon, { color: '#008000', weight: 2, fillOpacity: 0.08 }).addTo(map);
   }
 }
@@ -2408,6 +3210,25 @@ function renderLists() {
   if (els.showSavedPolygonsCheck) els.showSavedPolygonsCheck.checked = Boolean(state.showSavedPolygons);
   if (els.filterFreeCheck) els.filterFreeCheck.checked = Boolean(state.filterFreeOnly);
   els.selectedFileComment.textContent = selectedCommentText();
+
+  if (els.projectAreasCount) {
+    els.projectAreasCount.textContent = 'Областей: ' + state.polygons.length;
+  }
+  if (els.projectAreasList) {
+    els.projectAreasList.innerHTML = '';
+    if (!state.polygons.length) {
+      els.projectAreasList.innerHTML = '<div class="hint">В текущем проекте пока нет сохранённых областей.</div>';
+    }
+    state.polygons.forEach(p => {
+      const img = state.images.find(x => x.id === p.imageId);
+      const div = document.createElement('div');
+      div.className = 'item' + (state.selectedPolygonId === p.id ? ' active' : '') + (p.free ? ' freeItem' : '');
+      const freeBadge = p.free ? '<span class="badge freeBadge">бесплатная</span>' : '';
+      div.innerHTML = `<b>${escapeHtml(p.name)}</b>${freeBadge}<br><span class="small">Снимок: ${escapeHtml(img ? img.name : 'не найден')}<br>Точек: ${p.points.length}</span>`;
+      div.onclick = () => selectPolygon(p.id);
+      els.projectAreasList.appendChild(div);
+    });
+  }
 
   els.results.innerHTML = '';
   let resultIds;
@@ -2458,10 +3279,23 @@ function renderLists() {
 
 
 function latLngToImagePixel(latLng, img) {
-  if (!img || !img.georef || !img.georef.topLeftLatLng) return null;
+  if (!img || !img.georef) return null;
   const pt = Array.isArray(latLng) ? L.latLng(Number(latLng[0]), Number(latLng[1])) : L.latLng(latLng);
   if (!Number.isFinite(pt.lat) || !Number.isFinite(pt.lng)) return null;
 
+  if (img.georef.type === 'projective' && Array.isArray(img.georef.matrix) && img.georef.matrix.length === 9) {
+    try {
+      const baseZoom = Number.isFinite(Number(img.georef.baseZoom)) ? Number(img.georef.baseZoom) : map.getZoom();
+      const world = map.project(pt, baseZoom);
+      const inverse = matrix3Inverse(img.georef.matrix);
+      return transformPointByMatrix(inverse, world.x, world.y);
+    } catch (e) {
+      console.warn('Ошибка обратного проектного преобразования', e);
+      return null;
+    }
+  }
+
+  if (!img.georef.topLeftLatLng) return null;
   const baseZoom = typeof img.georef.baseZoom === 'number' ? img.georef.baseZoom : map.getZoom();
   const top = map.project(L.latLng(img.georef.topLeftLatLng[0], img.georef.topLeftLatLng[1]), baseZoom);
   const cur = map.project(pt, baseZoom);
@@ -2490,10 +3324,14 @@ function updateMiniOverlayStyles() {
     el.setAttribute('stroke-width', '1.25');
     el.setAttribute('vector-effect', 'non-scaling-stroke');
   });
-  els.selectedMiniSvg.querySelectorAll('[data-mini-poly=\"query\"]').forEach(el => {
-    el.setAttribute('stroke-width', '1.05');
-    el.setAttribute('stroke-dasharray', '5 4');
+  els.selectedMiniSvg.querySelectorAll('[data-mini-poly=\"query-halo\"]').forEach(el => {
+    el.setAttribute('stroke-width', '7');
     el.setAttribute('vector-effect', 'non-scaling-stroke');
+  });
+  els.selectedMiniSvg.querySelectorAll('[data-mini-poly=\"query\"]').forEach(el => {
+    el.setAttribute('stroke-width', '3');
+    el.setAttribute('vector-effect', 'non-scaling-stroke');
+    el.style.filter = 'drop-shadow(0 0 1px rgba(0,0,0,1))';
   });
   els.selectedMiniSvg.querySelectorAll('[data-mini-point=\"1\"]').forEach(el => {
     el.setAttribute('r', String(Math.max(0.7, Math.min(2.0, 1.6 / s))));
@@ -2615,8 +3453,20 @@ function updateMiniPreview() {
 
     const drawPolygonOnMini = (pts, options) => {
       if (!pts || pts.length < 3) return false;
+      const pointsText = pts.map(pt => pt.x + ',' + pt.y).join(' ');
+      if (options.halo) {
+        const halo = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+        halo.setAttribute('points', pointsText);
+        halo.setAttribute('fill', 'none');
+        halo.setAttribute('stroke', options.halo);
+        halo.setAttribute('stroke-linejoin', 'round');
+        halo.setAttribute('stroke-linecap', 'round');
+        halo.setAttribute('shape-rendering', 'geometricPrecision');
+        halo.setAttribute('data-mini-poly', (options.kind || 'selected') + '-halo');
+        els.selectedMiniSvg.appendChild(halo);
+      }
       const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-      poly.setAttribute('points', pts.map(pt => pt.x + ',' + pt.y).join(' '));
+      poly.setAttribute('points', pointsText);
       poly.setAttribute('fill', options.fill);
       poly.setAttribute('stroke', options.stroke);
       poly.setAttribute('stroke-linejoin', 'round');
@@ -2647,9 +3497,9 @@ function updateMiniPreview() {
     });
     const hasQuery = drawPolygonOnMini(queryPts, {
       kind: 'query',
-      fill: 'rgba(124,58,237,0.05)',
-      stroke: '#7c3aed',
-      dash: '5 4',
+      fill: 'rgba(255,234,0,0.20)',
+      stroke: '#ffea00',
+      halo: '#000000',
       points: false
     });
     updateMiniOverlayStyles();
@@ -2657,7 +3507,7 @@ function updateMiniPreview() {
     if (hasSelected || hasQuery) {
       const parts = [];
       if (hasSelected) parts.push('красным — сохранённая область');
-      if (hasQuery) parts.push('зелёным — проверочная область');
+      if (hasQuery) parts.push('жёлтым с чёрной обводкой — проверочная область');
       els.selectedMiniText.textContent = (img.name || 'Выбранный снимок') + ' · ' + parts.join(', ');
     } else {
       els.selectedMiniText.textContent = (img.name || 'Выбранный снимок') + ' · области не удалось пересчитать в координаты снимка. Проверьте точки привязки.';
@@ -2686,10 +3536,982 @@ function updateMiniPreview() {
   }
 }
 
+function activeMultiImage() {
+  return state.afsImage || null;
+}
+
+function syncMultiImageFields(img) {
+  if (!els.multiImageName) return;
+  els.multiImageName.value = img?.name || '';
+  els.multiImageFileName.value = img?.imageFileName || img?.fileName || '';
+  const opacity = Math.round(clampOpacity(img?.opacity ?? 0.66) * 100);
+  els.multiOpacityRange.value = String(opacity);
+  els.multiOpacityValue.textContent = opacity + '%';
+  if (els.multiRotationInput) els.multiRotationInput.value = String(normalizePhotoRotation(img?.multiRotationDeg || 0));
+}
+
+function renderMultiPanel() {
+  if (!els.multiImageSelect || !els.multiPointsList || !els.multiMetrics) return;
+  const current = activeMultiImage();
+  els.multiImageSelect.innerHTML = '';
+  const option = document.createElement('option');
+  option.value = current?.id || '';
+  option.textContent = current ? (current.name || 'Без названия') : 'снимок не загружен';
+  option.selected = true;
+  els.multiImageSelect.appendChild(option);
+  els.multiImageSelect.disabled = true;
+  document.body.classList.toggle('afs-view-mode', state.interfaceMode === 'multi' && state.afsViewOnly);
+  if (els.multiReturnEditBtn) els.multiReturnEditBtn.style.display = state.afsViewOnly && current ? 'block' : 'none';
+
+  syncMultiImageFields(current);
+  const points = Array.isArray(current?.multiControlPoints) ? current.multiControlPoints : [];
+  els.multiPointsList.innerHTML = '';
+  if (!points.length) {
+    els.multiPointsList.innerHTML = '<div class="hint">Опорные точки ещё не добавлены.</div>';
+  }
+  const maxResidual = points.reduce((max, point) => Math.max(max, Number(point.residualMeters) || 0), 0);
+  points.forEach((point, index) => {
+    const residual = Number(point.residualMeters);
+    const div = document.createElement('div');
+    const isBad = Number.isFinite(residual) && maxResidual > 0 && residual >= maxResidual && residual > 0;
+    div.className = 'multiPointItem' + (isBad ? ' badPoint' : '');
+    const residualText = Number.isFinite(residual) ? residual.toFixed(2) + ' м' : 'не рассчитана';
+    div.innerHTML = `<b>Пара ${index + 1}</b><br>Фото: ${(point.img.x * 100).toFixed(2)}%, ${(point.img.y * 100).toFixed(2)}%<br>Карта: ${Number(point.map[0]).toFixed(6)}, ${Number(point.map[1]).toFixed(6)}<br>Ошибка: ${residualText}<div class="pointActions"><button type="button" data-remove-multi-point="${escapeHtml(point.id)}" class="danger">Удалить</button></div>`;
+    els.multiPointsList.appendChild(div);
+  });
+
+  const georef = (current?.georef?.type === 'tps' || current?.georef?.type === 'projective') ? current.georef : null;
+  if (georef && Number.isFinite(georef.rmsMeters)) {
+    els.multiMetrics.classList.toggle('warn', georef.rmsMeters > 5);
+    els.multiMetrics.textContent = `Пар точек: ${points.length}. Средняя ошибка: ${georef.rmsMeters.toFixed(2)} м. Максимальная: ${Number(georef.maxMeters).toFixed(2)} м.`;
+  } else {
+    els.multiMetrics.classList.add('warn');
+    els.multiMetrics.textContent = `Пар точек: ${points.length}. Для расчёта нужно минимум 4.`;
+  }
+}
+
+function beginMultiPair() {
+  const img = activeMultiImage();
+  if (!img) return setStatus('Сначала загрузите или выберите снимок.');
+  state.multiPendingPhoto = null;
+  photoView.moved = false;
+  state.mode = 'multiPhoto';
+  els.photoViewport.classList.add('pointMode');
+  rebuildPhotoMarks();
+  setStatus('Кликните первый ориентир на фотографии. После этого приложение попросит указать тот же ориентир на карте.');
+}
+
+async function applyMultiGeoref() {
+  const img = activeMultiImage();
+  if (!img) return setStatus('Сначала загрузите или выберите снимок.');
+  if (!Array.isArray(img.multiControlPoints) || img.multiControlPoints.length < 4) {
+    return setStatus('Для привязки аэрофотосъёмки нужно минимум четыре пары точек.');
+  }
+  try {
+    setStatus('Рассчитывается многоточечная деформация полного снимка…');
+    img.georef = computeThinPlateSplineGeoref(img);
+    img.afsPreview = null;
+    await prepareAfsPreview(img, 2048);
+    state.afsImage = img;
+    state.afsViewOnly = false;
+    state.multiPendingPhoto = null;
+    state.mode = null;
+    renderAll();
+    rebuildMapRefMarkersForImage(img);
+    setStatus(`Полный снимок привязан по ${img.georef.pointCount} точкам без обрезки. Средняя ошибка: ${img.georef.rmsMeters.toFixed(2)} м; максимальная: ${img.georef.maxMeters.toFixed(2)} м.`);
+  } catch (e) {
+    console.error(e);
+    setStatus('Ошибка привязки аэрофотосъёмки: ' + e.message);
+  }
+}
+
+async function loadAfsImageFile(file) {
+  if (!file) return;
+  registerPhotoFile(file);
+  const dataUrl = await fileToDataURL(file);
+  const meta = await loadImageMeta(dataUrl);
+  clearAfsMbtilesLayer();
+  state.afsImage = {
+    id: uid('afs'),
+    name: els.multiImageName.value.trim() || file.name,
+    imageFileName: els.multiImageFileName.value.trim() || file.name,
+    fileName: els.multiImageFileName.value.trim() || file.name,
+    sourceFileName: file.name,
+    dataUrl,
+    width: meta.width,
+    height: meta.height,
+    multiControlPoints: [],
+    georef: null,
+    opacity: clampOpacity(Number(els.multiOpacityRange.value) / 100),
+    multiRotationDeg: normalizePhotoRotation(els.multiRotationInput?.value || 0),
+    afsPreview: null
+  };
+  state.afsViewOnly = false;
+  state.multiPendingPhoto = null;
+  state.mode = null;
+  showPhotoImage(state.afsImage, false);
+  renderAll();
+  setStatus('Отдельный снимок АФС загружен. Он не добавлен в основной проект. Добавьте минимум четыре пары точек.');
+}
+
+if (els.multiImageInput) els.multiImageInput.addEventListener('change', async () => {
+  const file = els.multiImageInput.files[0];
+  if (!file) return;
+  try {
+    await loadAfsImageFile(file);
+  } catch (e) {
+    setStatus('Не удалось открыть снимок АФС: ' + e.message);
+  } finally {
+    els.multiImageInput.value = '';
+  }
+});
+
+
+if (els.multiImageSelect) els.multiImageSelect.addEventListener('change', () => {});
+
+if (els.multiAddPairBtn) els.multiAddPairBtn.onclick = beginMultiPair;
+if (document.getElementById('multiApplyBtn')) document.getElementById('multiApplyBtn').onclick = applyMultiGeoref;
+if (document.getElementById('multiUndoBtn')) document.getElementById('multiUndoBtn').onclick = () => {
+  const img = activeMultiImage();
+  if (!img || !Array.isArray(img.multiControlPoints) || !img.multiControlPoints.length) return setStatus('Нет точек для удаления.');
+  img.multiControlPoints.pop();
+  img.georef = null;
+  img.afsPreview = null;
+  state.multiPendingPhoto = null;
+  state.mode = null;
+  rebuildPhotoMarks();
+  rebuildMapRefMarkersForImage(img);
+  renderMultiPanel();
+  renderImages(false);
+  setStatus('Последняя пара точек удалена.');
+};
+if (document.getElementById('multiResetBtn')) document.getElementById('multiResetBtn').onclick = () => {
+  const img = activeMultiImage();
+  if (!img) return setStatus('Сначала загрузите или выберите снимок.');
+  if (!confirm('Удалить все контрольные точки привязки аэрофотосъёмки?')) return;
+  img.multiControlPoints = [];
+  if (img.georef?.type === 'projective' || img.georef?.type === 'tps') img.georef = null;
+  img.afsPreview = null;
+  state.multiPendingPhoto = null;
+  state.mode = null;
+  rebuildPhotoMarks();
+  rebuildMapRefMarkersForImage(img);
+  renderAll();
+  setStatus('Контрольные точки привязки аэрофотосъёмки сброшены.');
+};
+
+if (els.multiPointsList) els.multiPointsList.addEventListener('click', ev => {
+  const button = ev.target.closest('[data-remove-multi-point]');
+  if (!button) return;
+  const img = activeMultiImage();
+  if (!img || !Array.isArray(img.multiControlPoints)) return;
+  const id = button.getAttribute('data-remove-multi-point');
+  img.multiControlPoints = img.multiControlPoints.filter(point => String(point.id) !== id);
+  img.georef = null;
+  img.afsPreview = null;
+  rebuildPhotoMarks();
+  rebuildMapRefMarkersForImage(img);
+  renderAll();
+  setStatus('Пара точек удалена. Выполните расчёт заново.');
+});
+
+if (els.multiOpacityRange) els.multiOpacityRange.addEventListener('input', () => {
+  const img = activeMultiImage();
+  const opacity = clampOpacity(Number(els.multiOpacityRange.value) / 100);
+  els.multiOpacityValue.textContent = Math.round(opacity * 100) + '%';
+  if (img) {
+    img.opacity = opacity;
+    renderImages(false);
+  }
+});
+
+if (document.getElementById('multiSaveNameBtn')) document.getElementById('multiSaveNameBtn').onclick = () => {
+  const img = activeMultiImage();
+  if (!img) return setStatus('Сначала загрузите или выберите снимок.');
+  img.name = els.multiImageName.value.trim() || img.name || 'Без названия';
+  const fileName = els.multiImageFileName.value.trim();
+  if (fileName) {
+    img.imageFileName = fileName;
+    img.fileName = fileName;
+  }
+  renderAll();
+  setStatus('Название снимка и имя файла сохранены.');
+};
+
+if (document.getElementById('multiFitPhotoBtn')) document.getElementById('multiFitPhotoBtn').onclick = fitPhotoToViewport;
+if (document.getElementById('multiCenterPhotoBtn')) document.getElementById('multiCenterPhotoBtn').onclick = fitPhotoToViewport;
+if (document.getElementById('multiPhotoZoomOutBtn')) document.getElementById('multiPhotoZoomOutBtn').onclick = () => {
+  const rect = els.photoViewport.getBoundingClientRect();
+  zoomPhotoAt(rect.left + rect.width / 2, rect.top + rect.height / 2, 1 / 1.25);
+};
+if (document.getElementById('multiPhotoZoomInBtn')) document.getElementById('multiPhotoZoomInBtn').onclick = () => {
+  const rect = els.photoViewport.getBoundingClientRect();
+  zoomPhotoAt(rect.left + rect.width / 2, rect.top + rect.height / 2, 1.25);
+};
+
+function setMultiPhotoRotation(value, fit = true) {
+  const img = activeMultiImage();
+  if (!img) {
+    if (els.multiRotationInput) els.multiRotationInput.value = '0';
+    return setStatus('Сначала загрузите или выберите снимок.');
+  }
+  img.multiRotationDeg = normalizePhotoRotation(value);
+  if (els.multiRotationInput) els.multiRotationInput.value = String(img.multiRotationDeg);
+  updatePhotoInfoText(img);
+  if (fit) fitPhotoToViewport();
+  else updatePhotoTransform();
+  renderMultiPanel();
+  setStatus('Предварительный поворот снимка: ' + img.multiRotationDeg + '°. Контрольные точки остаются привязаны к исходному файлу.');
+}
+
+if (els.multiRotationInput) els.multiRotationInput.addEventListener('change', () => setMultiPhotoRotation(els.multiRotationInput.value, true));
+if (els.multiRotateLeftBtn) els.multiRotateLeftBtn.onclick = () => {
+  const img = activeMultiImage();
+  setMultiPhotoRotation((img?.multiRotationDeg || 0) - 90, true);
+};
+if (els.multiRotateRightBtn) els.multiRotateRightBtn.onclick = () => {
+  const img = activeMultiImage();
+  setMultiPhotoRotation((img?.multiRotationDeg || 0) + 90, true);
+};
+if (els.multiRotationResetBtn) els.multiRotationResetBtn.onclick = () => setMultiPhotoRotation(0, true);
+
+if (els.multiBaseLayerSelect) els.multiBaseLayerSelect.addEventListener('change', () => setBaseLayer(els.multiBaseLayerSelect.value));
+
+function parseMultiCoordinates() {
+  const raw = (els.multiCoordInput.value || '').trim();
+  let lat;
+  let lng;
+  const numbers = raw.match(/[-+]?\d+(?:[\.,]\d+)?/g);
+  if (numbers && numbers.length >= 2) {
+    lat = Number(numbers[0].replace(',', '.'));
+    lng = Number(numbers[1].replace(',', '.'));
+  } else {
+    lat = Number(String(els.multiCoordLat.value || '').replace(',', '.'));
+    lng = Number(String(els.multiCoordLng.value || '').replace(',', '.'));
+  }
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+    throw new Error('Введите широту и долготу в допустимом диапазоне.');
+  }
+  return { lat, lng };
+}
+
+function goToMultiCoordinates() {
+  try {
+    const point = parseMultiCoordinates();
+    els.multiCoordInput.value = `${point.lat.toFixed(6)}, ${point.lng.toFixed(6)}`;
+    els.multiCoordLat.value = point.lat.toFixed(6);
+    els.multiCoordLng.value = point.lng.toFixed(6);
+    setCoordinateMarker(point.lat, point.lng, true);
+    setStatus('Карта наведена на координаты для привязки.');
+  } catch (e) {
+    setStatus('Ошибка координат: ' + e.message);
+  }
+}
+
+if (document.getElementById('multiGoToCoordBtn')) document.getElementById('multiGoToCoordBtn').onclick = goToMultiCoordinates;
+if (els.multiCoordInput) els.multiCoordInput.addEventListener('keydown', ev => { if (ev.key === 'Enter') goToMultiCoordinates(); });
+if (els.multiCoordLat) els.multiCoordLat.addEventListener('keydown', ev => { if (ev.key === 'Enter') goToMultiCoordinates(); });
+if (els.multiCoordLng) els.multiCoordLng.addEventListener('keydown', ev => { if (ev.key === 'Enter') goToMultiCoordinates(); });
+
+
+function setAfsExportStatus(text) {
+  if (els.multiExportStatus) els.multiExportStatus.textContent = text;
+}
+
+function safeExportBaseName(value) {
+  const text = String(value || 'aerial_photo').trim().replace(/\.[^.]+$/, '');
+  return (text || 'aerial_photo').replace(/[\\/:*?"<>|]+/g, '_').replace(/\s+/g, '_');
+}
+
+function downloadBlob(blob, fileName) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function canvasToBlob(canvas, type = 'image/png', quality) {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('Не удалось сформировать растровый файл.')), type, quality);
+  });
+}
+
+function blobToDataUrl(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(reader.error || new Error('Не удалось прочитать файл.'));
+    reader.readAsDataURL(blob);
+  });
+}
+
+const externalScriptPromises = new Map();
+function loadExternalScript(src, readyCheck) {
+  if (readyCheck()) return Promise.resolve();
+  if (externalScriptPromises.has(src)) return externalScriptPromises.get(src);
+  const promise = new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = src;
+    script.onload = () => readyCheck() ? resolve() : reject(new Error('Библиотека загрузилась некорректно.'));
+    script.onerror = () => reject(new Error('Не удалось загрузить библиотеку: ' + src));
+    document.head.appendChild(script);
+  });
+  externalScriptPromises.set(src, promise);
+  return promise;
+}
+
+async function ensureJsZip() {
+  await loadExternalScript('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js', () => typeof window.JSZip === 'function');
+  return window.JSZip;
+}
+
+let sqlJsPromise = null;
+async function ensureSqlJs() {
+  if (sqlJsPromise) return sqlJsPromise;
+  sqlJsPromise = (async () => {
+    await loadExternalScript('https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js', () => typeof window.initSqlJs === 'function');
+    return window.initSqlJs({
+      locateFile: file => 'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/' + file
+    });
+  })();
+  return sqlJsPromise;
+}
+
+function requireAfsForExport() {
+  const img = activeMultiImage();
+  if (!img) throw new Error('Сначала загрузите снимок АФС.');
+  if (!img.dataUrl) throw new Error('Исходный снимок недоступен. Откройте файл изображения заново.');
+  const validTps = img.georef?.type === 'tps' && Array.isArray(img.georef.sourcePoints);
+  const validProjective = img.georef?.type === 'projective' && Array.isArray(img.georef.matrix);
+  if (!validTps && !validProjective) {
+    throw new Error('Сначала добавьте минимум четыре пары точек и нажмите «Рассчитать».');
+  }
+  return img;
+}
+
+function projectiveWorldBounds(img) {
+  const h = img.georef.matrix;
+  const corners = [
+    transformPointByMatrix(h, 0, 0),
+    transformPointByMatrix(h, img.width, 0),
+    transformPointByMatrix(h, img.width, img.height),
+    transformPointByMatrix(h, 0, img.height)
+  ];
+  if (corners.some(point => !point || !Number.isFinite(point.x) || !Number.isFinite(point.y))) {
+    throw new Error('Не удалось определить границы привязанного снимка. Проверьте расположение контрольных точек.');
+  }
+  const xs = corners.map(point => point.x);
+  const ys = corners.map(point => point.y);
+  const minX = Math.min(...xs);
+  const maxX = Math.max(...xs);
+  const minY = Math.min(...ys);
+  const maxY = Math.max(...ys);
+  if (maxX - minX < 1 || maxY - minY < 1) throw new Error('Границы привязки слишком малы.');
+  return { minX, minY, maxX, maxY, corners, baseZoom: Number(img.georef.baseZoom) };
+}
+
+function affineFromTriangles(src, dst) {
+  const [s0, s1, s2] = src;
+  const [d0, d1, d2] = dst;
+  const den = s0.x * (s1.y - s2.y) + s1.x * (s2.y - s0.y) + s2.x * (s0.y - s1.y);
+  if (!Number.isFinite(den) || Math.abs(den) < 1e-9) return null;
+  const a = (d0.x * (s1.y - s2.y) + d1.x * (s2.y - s0.y) + d2.x * (s0.y - s1.y)) / den;
+  const c = (d0.x * (s2.x - s1.x) + d1.x * (s0.x - s2.x) + d2.x * (s1.x - s0.x)) / den;
+  const e = (d0.x * (s1.x * s2.y - s2.x * s1.y) + d1.x * (s2.x * s0.y - s0.x * s2.y) + d2.x * (s0.x * s1.y - s1.x * s0.y)) / den;
+  const b = (d0.y * (s1.y - s2.y) + d1.y * (s2.y - s0.y) + d2.y * (s0.y - s1.y)) / den;
+  const d = (d0.y * (s2.x - s1.x) + d1.y * (s0.x - s2.x) + d2.y * (s1.x - s0.x)) / den;
+  const f = (d0.y * (s1.x * s2.y - s2.x * s1.y) + d1.y * (s2.x * s0.y - s0.x * s2.y) + d2.y * (s0.x * s1.y - s1.x * s0.y)) / den;
+  return { a, b, c, d, e, f };
+}
+
+function drawImageTriangle(ctx, sourceImage, src, dst) {
+  const matrix = affineFromTriangles(src, dst);
+  if (!matrix) return;
+
+  // Небольшое перекрытие масок соседних треугольников убирает тонкие
+  // прозрачные линии сетки, возникающие из-за сглаживания Canvas.
+  const center = {
+    x: (dst[0].x + dst[1].x + dst[2].x) / 3,
+    y: (dst[0].y + dst[1].y + dst[2].y) / 3
+  };
+  const overlap = 0.9;
+  const clipDst = dst.map(point => {
+    const dx = point.x - center.x;
+    const dy = point.y - center.y;
+    const length = Math.hypot(dx, dy) || 1;
+    return {
+      x: point.x + dx / length * overlap,
+      y: point.y + dy / length * overlap
+    };
+  });
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(clipDst[0].x, clipDst[0].y);
+  ctx.lineTo(clipDst[1].x, clipDst[1].y);
+  ctx.lineTo(clipDst[2].x, clipDst[2].y);
+  ctx.closePath();
+  ctx.clip();
+  ctx.setTransform(matrix.a, matrix.b, matrix.c, matrix.d, matrix.e, matrix.f);
+  ctx.drawImage(sourceImage, 0, 0);
+  ctx.restore();
+}
+
+async function loadHtmlImage(src) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error('Не удалось открыть исходный снимок для экспорта.'));
+    image.src = src;
+  });
+}
+
+async function renderRectifiedAfs(img, maxDimension) {
+  const bounds = afsWorldBounds(img);
+  const bboxWidth = bounds.maxX - bounds.minX;
+  const bboxHeight = bounds.maxY - bounds.minY;
+  const aspect = bboxWidth / bboxHeight;
+  const sourceArea = Math.max(1, Number(img.width) * Number(img.height));
+  let width = Math.sqrt(sourceArea * aspect);
+  let height = width / aspect;
+  const maxSize = Math.max(512, Math.min(8192, Number(maxDimension) || 4096));
+  const capScale = Math.min(1, maxSize / Math.max(width, height));
+  width = Math.max(2, Math.round(width * capScale));
+  height = Math.max(2, Math.round(height * capScale));
+
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d', { alpha: true });
+  if (!ctx) throw new Error('Браузер не смог создать холст для экспорта.');
+  ctx.clearRect(0, 0, width, height);
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+
+  const sourceImage = await loadHtmlImage(img.dataUrl);
+  const mapPoint = (x, y) => {
+    const world = afsMapPixelToWorld(img, x, y);
+    if (!world) return null;
+    return {
+      x: (world.x - bounds.minX) * width / bboxWidth,
+      y: (world.y - bounds.minY) * height / bboxHeight
+    };
+  };
+  const longest = Math.max(img.width, img.height);
+  const baseDivisions = maxSize >= 7000 ? 96 : maxSize >= 3500 ? 72 : 52;
+  const divX = Math.max(12, Math.round(baseDivisions * img.width / longest));
+  const divY = Math.max(12, Math.round(baseDivisions * img.height / longest));
+  for (let gy = 0; gy < divY; gy++) {
+    const sy0 = img.height * gy / divY;
+    const sy1 = img.height * (gy + 1) / divY;
+    for (let gx = 0; gx < divX; gx++) {
+      const sx0 = img.width * gx / divX;
+      const sx1 = img.width * (gx + 1) / divX;
+      const s00 = { x: sx0, y: sy0 };
+      const s10 = { x: sx1, y: sy0 };
+      const s11 = { x: sx1, y: sy1 };
+      const s01 = { x: sx0, y: sy1 };
+      const d00 = mapPoint(sx0, sy0);
+      const d10 = mapPoint(sx1, sy0);
+      const d11 = mapPoint(sx1, sy1);
+      const d01 = mapPoint(sx0, sy1);
+      if (!d00 || !d10 || !d11 || !d01) continue;
+      drawImageTriangle(ctx, sourceImage, [s00, s10, s11], [d00, d10, d11]);
+      drawImageTriangle(ctx, sourceImage, [s00, s11, s01], [d00, d11, d01]);
+    }
+  }
+
+  const worldSize = 256 * Math.pow(2, bounds.baseZoom);
+  const nw = map.unproject(L.point(bounds.minX, bounds.minY), bounds.baseZoom);
+  const se = map.unproject(L.point(bounds.maxX, bounds.maxY), bounds.baseZoom);
+  return {
+    canvas,
+    worldBounds: { minX: bounds.minX, minY: bounds.minY, maxX: bounds.maxX, maxY: bounds.maxY },
+    bounds: { west: nw.lng, north: nw.lat, east: se.lng, south: se.lat },
+    normalized: {
+      x0: bounds.minX / worldSize,
+      y0: bounds.minY / worldSize,
+      x1: bounds.maxX / worldSize,
+      y1: bounds.maxY / worldSize
+    },
+    basePixelWidth: bboxWidth,
+    basePixelHeight: bboxHeight,
+    baseZoom: bounds.baseZoom
+  };
+}
+
+async function prepareAfsPreview(img, maxDimension = 2048) {
+  if (!img?.georef || img.georef.type !== 'tps') return null;
+  const rectified = await renderRectifiedAfs(img, maxDimension);
+  const blob = await canvasToBlob(rectified.canvas, 'image/png');
+  const dataUrl = await blobToDataUrl(blob);
+  img.afsPreview = {
+    dataUrl,
+    canvasWidth: rectified.canvas.width,
+    canvasHeight: rectified.canvas.height,
+    worldBounds: rectified.worldBounds,
+    baseZoom: rectified.baseZoom
+  };
+  return img.afsPreview;
+}
+
+function fitAfsImageOnMap(img) {
+  if (!img?.georef) return;
+  try {
+    const bounds = afsWorldBounds(img);
+    const nw = map.unproject(L.point(bounds.minX, bounds.minY), bounds.baseZoom);
+    const se = map.unproject(L.point(bounds.maxX, bounds.maxY), bounds.baseZoom);
+    map.fitBounds([[se.lat, nw.lng], [nw.lat, se.lng]], { padding: [20, 20] });
+  } catch (e) {
+    console.warn(e);
+  }
+}
+
+async function exportAfsJson(img) {
+  const payload = {
+    format: 'aero-afs-georeference',
+    version: 2,
+    createdAt: new Date().toISOString(),
+    crs: 'EPSG:3857',
+    image: {
+      id: img.id,
+      name: img.name,
+      imageFileName: img.imageFileName || img.fileName || img.sourceFileName || 'aerial_photo',
+      sourceFileName: img.sourceFileName || '',
+      width: img.width,
+      height: img.height,
+      opacity: clampOpacity(img.opacity),
+      multiRotationDeg: normalizePhotoRotation(img.multiRotationDeg || 0),
+      dataUrl: img.dataUrl
+    },
+    controlPoints: (img.multiControlPoints || []).map(point => ({
+      id: point.id,
+      image: { x: Number(point.img.x), y: Number(point.img.y) },
+      map: { lat: Number(point.map[0]), lng: Number(point.map[1]) },
+      residualMeters: Number.isFinite(Number(point.residualMeters)) ? Number(point.residualMeters) : null
+    })),
+    georef: JSON.parse(JSON.stringify(img.georef))
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  downloadBlob(blob, safeExportBaseName(img.name) + '_afs.json');
+}
+
+function oziCoordinateParts(value, positive, negative) {
+  const hemisphere = value >= 0 ? positive : negative;
+  const absolute = Math.abs(value);
+  const degrees = Math.floor(absolute);
+  const minutes = (absolute - degrees) * 60;
+  return { hemisphere, degrees, minutes };
+}
+
+function oziPointLine(index, x, y, lat, lng) {
+  const latPart = oziCoordinateParts(lat, 'N', 'S');
+  const lngPart = oziCoordinateParts(lng, 'E', 'W');
+  const number = String(index).padStart(2, '0');
+  return `Point${number},xy,${Math.round(x)},${Math.round(y)},in,deg,${latPart.degrees},${latPart.minutes.toFixed(8)},${latPart.hemisphere},${lngPart.degrees},${lngPart.minutes.toFixed(8)},${lngPart.hemisphere},grid,,,,N`;
+}
+
+function buildOziMapText(title, imageName, width, height, bounds) {
+  const points = [
+    { x: 0, y: 0, lat: bounds.north, lng: bounds.west },
+    { x: width - 1, y: 0, lat: bounds.north, lng: bounds.east },
+    { x: width - 1, y: height - 1, lat: bounds.south, lng: bounds.east },
+    { x: 0, y: height - 1, lat: bounds.south, lng: bounds.west }
+  ];
+  const lines = [
+    'OziExplorer Map Data File Version 2.2',
+    title,
+    imageName,
+    '1 ,Map Code,',
+    'WGS 84,WGS 84, 0.0000, 0.0000,WGS 84',
+    'Reserved 1',
+    'Reserved 2',
+    'Magnetic Variation,,,E',
+    'Map Projection,Mercator,PolyCal,No,AutoCalOnly,No,BSBUseWPX,No'
+  ];
+  points.forEach((point, index) => lines.push(oziPointLine(index + 1, point.x, point.y, point.lat, point.lng)));
+  for (let index = points.length + 1; index <= 9; index++) lines.push(`Point${String(index).padStart(2, '0')},xy,,,in,deg,,,,,,,grid,,,,N`);
+  lines.push('Projection Setup,,,,,,,,,,');
+  lines.push('Map Feature = MF ; Map Comment = MC     These follow if they exist');
+  lines.push('Track File = TF      These follow if they exist');
+  lines.push('Moving Map Parameters = MM?    These follow if they exist');
+  lines.push('MM0,Yes');
+  lines.push('MMPNUM,4');
+  points.forEach((point, index) => lines.push(`MMPXY,${index + 1},${Math.round(point.x)},${Math.round(point.y)}`));
+  points.forEach((point, index) => lines.push(`MMPLL,${index + 1},${point.lng.toFixed(10)},${point.lat.toFixed(10)}`));
+  lines.push('MM1B,1.000000');
+  lines.push(`IWH,Map Image Width/Height,${width},${height}`);
+  return lines.join('\r\n') + '\r\n';
+}
+
+async function exportAfsOziMap(img, maxSize) {
+  setAfsExportStatus('Формируется выпрямленное изображение для OziMap…');
+  const rectified = await renderRectifiedAfs(img, maxSize);
+  const pngBlob = await canvasToBlob(rectified.canvas, 'image/png');
+  const JSZip = await ensureJsZip();
+  const zip = new JSZip();
+  const base = safeExportBaseName(img.name);
+  const imageName = base + '.png';
+  const mapName = base + '.map';
+  zip.file(imageName, pngBlob);
+  zip.file(mapName, buildOziMapText(img.name || base, imageName, rectified.canvas.width, rectified.canvas.height, rectified.bounds));
+  const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
+  downloadBlob(blob, base + '_ozimap.zip');
+}
+
+async function exportAfsMbtiles(img, maxSize) {
+  setAfsExportStatus('Формируется выпрямленный растр для MBTiles…');
+  const rectified = await renderRectifiedAfs(img, maxSize);
+  const SQL = await ensureSqlJs();
+  const db = new SQL.Database();
+  db.run('CREATE TABLE metadata (name TEXT, value TEXT);');
+  db.run('CREATE TABLE tiles (zoom_level INTEGER, tile_column INTEGER, tile_row INTEGER, tile_data BLOB);');
+  db.run('CREATE UNIQUE INDEX tile_index ON tiles (zoom_level, tile_column, tile_row);');
+
+  const ratioX = rectified.canvas.width / rectified.basePixelWidth;
+  const ratioY = rectified.canvas.height / rectified.basePixelHeight;
+  const maxZoom = Math.max(0, Math.min(22, Math.floor(rectified.baseZoom + Math.log2(Math.max(1e-9, Math.min(ratioX, ratioY))))));
+  const minZoom = Math.max(0, maxZoom - 4);
+  const centerLng = (rectified.bounds.west + rectified.bounds.east) / 2;
+  const centerLat = (rectified.bounds.south + rectified.bounds.north) / 2;
+  const metadata = {
+    name: img.name || 'Aerial photo',
+    type: 'overlay',
+    version: '1.0',
+    description: 'Georeferenced aerial photograph',
+    format: 'png',
+    bounds: [rectified.bounds.west, rectified.bounds.south, rectified.bounds.east, rectified.bounds.north].join(','),
+    center: [centerLng, centerLat, maxZoom].join(','),
+    minzoom: String(minZoom),
+    maxzoom: String(maxZoom)
+  };
+  const metadataStmt = db.prepare('INSERT INTO metadata (name, value) VALUES (?, ?)');
+  Object.entries(metadata).forEach(([name, value]) => metadataStmt.run([name, String(value)]));
+  metadataStmt.free();
+
+  const tileStmt = db.prepare('INSERT INTO tiles (zoom_level, tile_column, tile_row, tile_data) VALUES (?, ?, ?, ?)');
+  const tileCanvas = document.createElement('canvas');
+  tileCanvas.width = 256;
+  tileCanvas.height = 256;
+  const tileCtx = tileCanvas.getContext('2d', { alpha: true });
+  tileCtx.imageSmoothingEnabled = true;
+  tileCtx.imageSmoothingQuality = 'high';
+
+  // Каждый тайл сначала рисуется с однопиксельным запасом по краям.
+  // Это даёт фильтру масштабирования соседние пиксели и предотвращает
+  // появление квадратной сетки на стыках MBTiles.
+  const tilePadding = 1;
+  const paddedTileCanvas = document.createElement('canvas');
+  paddedTileCanvas.width = 256 + tilePadding * 2;
+  paddedTileCanvas.height = 256 + tilePadding * 2;
+  const paddedTileCtx = paddedTileCanvas.getContext('2d', { alpha: true });
+  paddedTileCtx.imageSmoothingEnabled = true;
+  paddedTileCtx.imageSmoothingQuality = 'high';
+  const { x0, y0, x1, y1 } = rectified.normalized;
+  let completed = 0;
+  let total = 0;
+  for (let z = minZoom; z <= maxZoom; z++) {
+    const n = Math.pow(2, z);
+    const minX = Math.max(0, Math.floor(x0 * n));
+    const maxX = Math.min(n - 1, Math.floor(x1 * n - 1e-10));
+    const minY = Math.max(0, Math.floor(y0 * n));
+    const maxY = Math.min(n - 1, Math.floor(y1 * n - 1e-10));
+    total += Math.max(0, maxX - minX + 1) * Math.max(0, maxY - minY + 1);
+  }
+  if (total > 2500) throw new Error('Экспорт потребует слишком много тайлов (' + total + '). Выберите меньший максимальный размер.');
+
+  for (let z = minZoom; z <= maxZoom; z++) {
+    const n = Math.pow(2, z);
+    const minX = Math.max(0, Math.floor(x0 * n));
+    const maxX = Math.min(n - 1, Math.floor(x1 * n - 1e-10));
+    const minY = Math.max(0, Math.floor(y0 * n));
+    const maxY = Math.min(n - 1, Math.floor(y1 * n - 1e-10));
+    for (let tileY = minY; tileY <= maxY; tileY++) {
+      for (let tileX = minX; tileX <= maxX; tileX++) {
+        tileCtx.clearRect(0, 0, 256, 256);
+        paddedTileCtx.clearRect(0, 0, paddedTileCanvas.width, paddedTileCanvas.height);
+
+        const worldPixel = 1 / (n * 256);
+        const tx0 = tileX / n;
+        const ty0 = tileY / n;
+        const tx1 = (tileX + 1) / n;
+        const ty1 = (tileY + 1) / n;
+        const paddedTx0 = tx0 - tilePadding * worldPixel;
+        const paddedTy0 = ty0 - tilePadding * worldPixel;
+        const paddedTx1 = tx1 + tilePadding * worldPixel;
+        const paddedTy1 = ty1 + tilePadding * worldPixel;
+        const ix0 = Math.max(x0, paddedTx0);
+        const iy0 = Math.max(y0, paddedTy0);
+        const ix1 = Math.min(x1, paddedTx1);
+        const iy1 = Math.min(y1, paddedTy1);
+        if (ix1 <= ix0 || iy1 <= iy0) continue;
+        const sx = (ix0 - x0) / (x1 - x0) * rectified.canvas.width;
+        const sy = (iy0 - y0) / (y1 - y0) * rectified.canvas.height;
+        const sw = (ix1 - ix0) / (x1 - x0) * rectified.canvas.width;
+        const sh = (iy1 - iy0) / (y1 - y0) * rectified.canvas.height;
+        const dx = (ix0 - paddedTx0) * n * 256;
+        const dy = (iy0 - paddedTy0) * n * 256;
+        const dw = (ix1 - ix0) * n * 256;
+        const dh = (iy1 - iy0) * n * 256;
+        paddedTileCtx.drawImage(rectified.canvas, sx, sy, sw, sh, dx, dy, dw, dh);
+        tileCtx.drawImage(paddedTileCanvas, tilePadding, tilePadding, 256, 256, 0, 0, 256, 256);
+        const tileBlob = await canvasToBlob(tileCanvas, 'image/png');
+        const bytes = new Uint8Array(await tileBlob.arrayBuffer());
+        const tmsRow = n - 1 - tileY;
+        tileStmt.run([z, tileX, tmsRow, bytes]);
+        completed += 1;
+        if (completed % 10 === 0 || completed === total) {
+          setAfsExportStatus(`Создание MBTiles: ${completed} из ${total} тайлов…`);
+          await new Promise(resolve => setTimeout(resolve, 0));
+        }
+      }
+    }
+  }
+  tileStmt.free();
+  const bytes = db.export();
+  db.close();
+  downloadBlob(new Blob([bytes], { type: 'application/x-sqlite3' }), safeExportBaseName(img.name) + '.mbtiles');
+}
+
+async function exportSelectedAfsFormat() {
+  try {
+    const img = requireAfsForExport();
+    const format = els.multiExportFormat?.value || 'json';
+    const maxSize = Number(els.multiExportSize?.value || 4096);
+    if (els.multiExportBtn) els.multiExportBtn.disabled = true;
+    setAfsExportStatus('Подготовка файла…');
+    if (format === 'json') await exportAfsJson(img);
+    else if (format === 'ozimap') await exportAfsOziMap(img, maxSize);
+    else if (format === 'mbtiles') await exportAfsMbtiles(img, maxSize);
+    else throw new Error('Неизвестный формат экспорта.');
+    setAfsExportStatus('Файл сформирован и передан браузеру для скачивания.');
+  } catch (e) {
+    console.error(e);
+    setAfsExportStatus('Ошибка: ' + e.message);
+    setStatus('Ошибка сохранения АФС: ' + e.message);
+  } finally {
+    if (els.multiExportBtn) els.multiExportBtn.disabled = false;
+  }
+}
+
+function clearAfsMbtilesLayer() {
+  if (state.afsMbtilesLayer && map.hasLayer(state.afsMbtilesLayer)) map.removeLayer(state.afsMbtilesLayer);
+  state.afsMbtilesLayer = null;
+  if (state.afsMbtilesDb) {
+    try { state.afsMbtilesDb.close(); } catch (_) {}
+  }
+  state.afsMbtilesDb = null;
+}
+
+function enterAfsViewMode(img = null) {
+  state.afsImage = img;
+  state.afsViewOnly = true;
+  state.multiPendingPhoto = null;
+  state.mode = null;
+  state.selectedPolygonId = null;
+  setInterfaceMode('multi');
+  showPhotoImage(img, false);
+  rebuildPhotoMarks();
+  rebuildMapRefMarkersForImage(img);
+  renderAll(false);
+  if (img?.georef) fitAfsImageOnMap(img);
+}
+
+async function openAfsJson(file) {
+  const payload = JSON.parse(await file.text());
+  if (payload?.format !== 'aero-afs-georeference' || !payload.image?.dataUrl || !payload.georef) {
+    throw new Error('Это не JSON привязки АФС с встроенным снимком.');
+  }
+  clearAfsMbtilesLayer();
+  const image = {
+    id: payload.image.id || uid('afs'),
+    name: payload.image.name || file.name,
+    imageFileName: payload.image.imageFileName || payload.image.sourceFileName || file.name,
+    fileName: payload.image.imageFileName || payload.image.sourceFileName || file.name,
+    sourceFileName: payload.image.sourceFileName || '',
+    width: Number(payload.image.width),
+    height: Number(payload.image.height),
+    opacity: clampOpacity(payload.image.opacity),
+    multiRotationDeg: normalizePhotoRotation(payload.image.multiRotationDeg || 0),
+    dataUrl: payload.image.dataUrl,
+    multiControlPoints: Array.isArray(payload.controlPoints) ? payload.controlPoints.map(point => ({
+      id: point.id || uid('cp'),
+      img: { x: Number(point.image?.x), y: Number(point.image?.y) },
+      map: [Number(point.map?.lat), Number(point.map?.lng)],
+      residualMeters: point.residualMeters
+    })) : [],
+    georef: payload.georef
+  };
+  if (!Number.isFinite(image.width) || !Number.isFinite(image.height)) {
+    const meta = await loadImageMeta(image.dataUrl);
+    image.width = meta.width;
+    image.height = meta.height;
+  }
+  if (image.georef?.type === 'tps') {
+    const hasCoefficients = Array.isArray(image.georef.sourcePoints) && Array.isArray(image.georef.weightsX) && Array.isArray(image.georef.weightsY);
+    if (!hasCoefficients) image.georef = computeThinPlateSplineGeoref(image);
+    await prepareAfsPreview(image, 2048);
+  }
+  enterAfsViewMode(image);
+  setAfsExportStatus('JSON АФС открыт в режиме просмотра. Проверочные области скрыты.');
+}
+
+function parseOziCalibration(text) {
+  const xy = new Map();
+  const ll = new Map();
+  String(text).split(/\r?\n/).forEach(line => {
+    let match = line.match(/^MMPXY,(\d+),\s*([-+\d.]+),\s*([-+\d.]+)/i);
+    if (match) xy.set(Number(match[1]), { x: Number(match[2]), y: Number(match[3]) });
+    match = line.match(/^MMPLL,(\d+),\s*([-+\d.]+),\s*([-+\d.]+)/i);
+    if (match) ll.set(Number(match[1]), { lng: Number(match[2]), lat: Number(match[3]) });
+  });
+  return [...xy.keys()].filter(key => ll.has(key)).sort((a, b) => a - b).map(key => ({ ...xy.get(key), ...ll.get(key) }));
+}
+
+async function openAfsOziZip(file) {
+  const JSZip = await ensureJsZip();
+  const zip = await JSZip.loadAsync(file);
+  const entries = Object.values(zip.files).filter(entry => !entry.dir);
+  const mapEntry = entries.find(entry => /\.map$/i.test(entry.name));
+  if (!mapEntry) throw new Error('В ZIP не найден файл OziExplorer .map.');
+  const mapText = await mapEntry.async('string');
+  const lines = mapText.split(/\r?\n/);
+  const referencedName = String(lines[2] || '').trim().replace(/\\/g, '/').split('/').pop();
+  const imageEntry = entries.find(entry => entry.name.replace(/\\/g, '/').split('/').pop().toLowerCase() === referencedName.toLowerCase())
+    || entries.find(entry => /\.(png|jpe?g|webp)$/i.test(entry.name));
+  if (!imageEntry) throw new Error('В ZIP не найдено изображение, указанное в .map.');
+  const imageBlob = await imageEntry.async('blob');
+  const dataUrl = await blobToDataUrl(imageBlob);
+  const meta = await loadImageMeta(dataUrl);
+  const calibration = parseOziCalibration(mapText);
+  if (calibration.length < 4) throw new Error('В OziMap найдено меньше четырёх калибровочных точек.');
+  const image = {
+    id: uid('afs'),
+    name: String(lines[1] || imageEntry.name || file.name).trim(),
+    imageFileName: referencedName || imageEntry.name,
+    fileName: referencedName || imageEntry.name,
+    sourceFileName: referencedName || imageEntry.name,
+    width: meta.width,
+    height: meta.height,
+    opacity: 0.66,
+    multiRotationDeg: 0,
+    dataUrl,
+    multiControlPoints: calibration.map(point => ({
+      id: uid('cp'),
+      img: { x: point.x / meta.width, y: point.y / meta.height },
+      map: [point.lat, point.lng],
+      residualMeters: null
+    })),
+    georef: null
+  };
+  image.georef = computeProjectiveGeoref(image);
+  clearAfsMbtilesLayer();
+  enterAfsViewMode(image);
+  setAfsExportStatus('OziMap открыт в режиме просмотра. Проверочные области скрыты.');
+}
+
+async function openAfsMbtiles(file) {
+  const SQL = await ensureSqlJs();
+  clearAfsMbtilesLayer();
+  state.afsImage = null;
+  showPhotoImage(null);
+  const db = new SQL.Database(new Uint8Array(await file.arrayBuffer()));
+  const metadata = {};
+  const metadataResult = db.exec('SELECT name, value FROM metadata');
+  if (metadataResult[0]) {
+    metadataResult[0].values.forEach(row => { metadata[String(row[0])] = String(row[1]); });
+  }
+  const format = String(metadata.format || 'png').toLowerCase();
+  const mimeType = format === 'jpg' || format === 'jpeg' ? 'image/jpeg' : format === 'webp' ? 'image/webp' : 'image/png';
+  const LocalMbtilesLayer = L.GridLayer.extend({
+    createTile(coords, done) {
+      const tile = document.createElement('img');
+      tile.width = 256;
+      tile.height = 256;
+      tile.alt = '';
+      setTimeout(() => {
+        try {
+          const tmsRow = Math.pow(2, coords.z) - 1 - coords.y;
+          const statement = db.prepare('SELECT tile_data FROM tiles WHERE zoom_level = ? AND tile_column = ? AND tile_row = ?');
+          statement.bind([coords.z, coords.x, tmsRow]);
+          if (statement.step()) {
+            const row = statement.get();
+            const blob = new Blob([row[0]], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            tile.onload = () => { URL.revokeObjectURL(url); done(null, tile); };
+            tile.onerror = () => { URL.revokeObjectURL(url); done(null, tile); };
+            tile.src = url;
+          } else {
+            done(null, tile);
+          }
+          statement.free();
+        } catch (error) {
+          done(error, tile);
+        }
+      }, 0);
+      return tile;
+    }
+  });
+  const minZoom = Number.isFinite(Number(metadata.minzoom)) ? Number(metadata.minzoom) : 0;
+  const maxZoom = Number.isFinite(Number(metadata.maxzoom)) ? Number(metadata.maxzoom) : 22;
+  state.afsMbtilesDb = db;
+  state.afsMbtilesLayer = new LocalMbtilesLayer({ minZoom, maxZoom, opacity: 1, tileSize: 256 });
+  state.afsViewOnly = true;
+  setInterfaceMode('multi');
+  if (!map.hasLayer(state.afsMbtilesLayer)) state.afsMbtilesLayer.addTo(map);
+  renderAll(false);
+  const bounds = String(metadata.bounds || '').split(',').map(Number);
+  if (bounds.length === 4 && bounds.every(Number.isFinite)) {
+    map.fitBounds([[bounds[1], bounds[0]], [bounds[3], bounds[2]]], { padding: [20, 20] });
+  }
+  setAfsExportStatus('MBTiles открыт в режиме просмотра. Проверочные области скрыты.');
+  setStatus('Открыт локальный слой MBTiles АФС.');
+}
+
+async function openSavedAfsFile(file) {
+  const name = String(file.name || '').toLowerCase();
+  if (name.endsWith('.json')) return openAfsJson(file);
+  if (name.endsWith('.mbtiles')) return openAfsMbtiles(file);
+  if (name.endsWith('.zip')) return openAfsOziZip(file);
+  throw new Error('Поддерживаются файлы .json, .mbtiles и OziMap .zip.');
+}
+
+if (els.multiExportBtn) els.multiExportBtn.onclick = exportSelectedAfsFormat;
+if (els.multiOpenInput) els.multiOpenInput.addEventListener('change', async () => {
+  const file = els.multiOpenInput.files[0];
+  if (!file) return;
+  try {
+    setAfsExportStatus('Открытие файла…');
+    await openSavedAfsFile(file);
+  } catch (e) {
+    console.error(e);
+    setAfsExportStatus('Ошибка открытия: ' + e.message);
+    setStatus('Ошибка открытия АФС: ' + e.message);
+  } finally {
+    els.multiOpenInput.value = '';
+  }
+});
+if (els.multiReturnEditBtn) els.multiReturnEditBtn.onclick = () => {
+  if (!state.afsImage) return;
+  state.afsViewOnly = false;
+  document.body.classList.remove('afs-view-mode');
+  clearAfsMbtilesLayer();
+  showPhotoImage(state.afsImage, false);
+  renderAll(false);
+  rebuildPhotoMarks();
+  rebuildMapRefMarkersForImage(state.afsImage);
+  setStatus('Режим редактирования привязки АФС включён.');
+};
+
 function renderAll(onlySelected = false) {
   renderImages(onlySelected && Boolean(state.selectedImageId));
   renderPolygons(onlySelected);
   renderLists();
+  renderMultiPanel();
   updateMiniPreview();
 }
 
@@ -2738,7 +4560,7 @@ if (els.selectedMiniViewport) {
 
 function exportProject() {
   const project = {
-    version: 21,
+    version: 32,
     createdAt: new Date().toISOString(),
     storage: { embeddedOverlayImages: false },
     dataSourceMode: state.dataSourceMode,
@@ -2769,6 +4591,7 @@ document.getElementById('newProjectBtn').onclick = () => {
   state.selectedPolygonId = null;
   state.selectedImageId = null;
   state.currentImageDraft = null;
+  state.multiPendingPhoto = null;
   state.mapBaseLayer = 'street';
   state.showSavedPolygons = true;
   state.filterFreeOnly = false;
@@ -2824,6 +4647,24 @@ document.getElementById('loadProjectInput').addEventListener('change', async (ev
   } catch (e) {
     setStatus('Ошибка загрузки проекта: ' + e.message);
   }
+});
+
+document.querySelectorAll('.editorCollapsible > h2').forEach(title => {
+  const card = title.parentElement;
+  title.setAttribute('role', 'button');
+  title.setAttribute('tabindex', '0');
+  title.setAttribute('aria-expanded', 'true');
+  const toggle = () => {
+    const collapsed = card.classList.toggle('collapsed');
+    title.setAttribute('aria-expanded', String(!collapsed));
+  };
+  title.addEventListener('click', toggle);
+  title.addEventListener('keydown', ev => {
+    if (ev.key === 'Enter' || ev.key === ' ') {
+      ev.preventDefault();
+      toggle();
+    }
+  });
 });
 
 syncFilterControls();

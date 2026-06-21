@@ -1169,7 +1169,9 @@ const miniView = {
   imageHeight: 0,
   polygonPts: [],
   currentKey: '',
-  autoFitKey: ''
+  autoFitKey: '',
+  source: '',
+  loadToken: 0
 };
 
 const els = {
@@ -1478,6 +1480,7 @@ function setInterfaceMode(mode) {
   setTimeout(() => {
     map.invalidateSize();
     renderImages(Boolean(state.selectedPolygonId));
+    if (state.interfaceMode === 'view') updateMiniPreview();
   }, 100);
 }
 
@@ -3395,6 +3398,10 @@ function zoomMiniAt(clientX, clientY, factor) {
 
 function clearMiniPreview(text = 'Выберите найденную область, чтобы увидеть её на снимке.') {
   if (!els.selectedMiniPhoto || !els.selectedMiniSvg || !els.selectedMiniText) return;
+  miniView.loadToken += 1;
+  miniView.source = '';
+  els.selectedMiniPhoto.onload = null;
+  els.selectedMiniPhoto.onerror = null;
   els.selectedMiniSvg.innerHTML = '';
   els.selectedMiniPhoto.style.display = 'none';
   els.selectedMiniPhoto.removeAttribute('src');
@@ -3523,16 +3530,27 @@ function updateMiniPreview() {
     }
   };
 
-  els.selectedMiniPhoto.onerror = () => {
+  const sourceChanged = miniView.source !== src;
+  if (sourceChanged) {
+    miniView.source = src;
+    miniView.loadToken += 1;
+  }
+  const loadToken = miniView.loadToken;
+  const drawIfCurrent = () => {
+    if (loadToken !== miniView.loadToken || miniView.source !== src) return;
+    draw();
+  };
+  const failIfCurrent = () => {
+    if (loadToken !== miniView.loadToken || miniView.source !== src) return;
     clearMiniPreview('Фото не удалось открыть: ' + src + '. Проверьте путь в JSON и наличие файла в data/tiles.');
   };
-  if (els.selectedMiniPhoto.src !== src) {
-    els.selectedMiniPhoto.onload = draw;
-    els.selectedMiniPhoto.src = src;
-  } else if (els.selectedMiniPhoto.complete) {
-    draw();
-  } else {
-    els.selectedMiniPhoto.onload = draw;
+  els.selectedMiniPhoto.onload = drawIfCurrent;
+  els.selectedMiniPhoto.onerror = failIfCurrent;
+
+  if (sourceChanged || els.selectedMiniPhoto.getAttribute('src') !== src) {
+    els.selectedMiniPhoto.setAttribute('src', src);
+  } else if (els.selectedMiniPhoto.complete && els.selectedMiniPhoto.naturalWidth > 0) {
+    drawIfCurrent();
   }
 }
 
@@ -4511,8 +4529,11 @@ function renderAll(onlySelected = false) {
   renderImages(onlySelected && Boolean(state.selectedImageId));
   renderPolygons(onlySelected);
   renderLists();
-  renderMultiPanel();
-  updateMiniPreview();
+  if (state.interfaceMode === 'multi') {
+    renderMultiPanel();
+  } else if (state.interfaceMode === 'view') {
+    updateMiniPreview();
+  }
 }
 
 if (els.miniZoomOutBtn) els.miniZoomOutBtn.onclick = () => zoomMiniAt(
